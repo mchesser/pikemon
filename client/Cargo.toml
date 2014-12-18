@@ -1,0 +1,16 @@
+[package]
+name = "pikemon_client"
+version = "0.0.0"
+authors = ["Michael Chesser"]
+
+[[bin]]
+name = "pikemon_client"
+
+[dependencies.pikemon_common]
+path = "../common"
+
+[dependencies.gb_emu]
+path = "../../gb_emu"
+
+[dependencies.sdl2]
+git = "https://github.com/AngryLawyer/rust-sdl2.git"

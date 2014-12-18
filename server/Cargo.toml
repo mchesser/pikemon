@@ -1,0 +1,10 @@
+[package]
+name = "pikemon_server"
+version = "0.0.0"
+authors = ["Michael Chesser"]
+
+[[bin]]
+name = "pikemon_server"
+
+[dependencies.pikemon_common]
+path = "../common"
