@@ -1,7 +1,9 @@
 use common::PlayerData;
 use std::comm::{channel, Sender, Receiver};
-use std::io::TcpStream;
+use std::io::{TcpStream, BufferedReader};
 use std::collections::HashMap;
+
+use serialize::json;
 
 pub struct NetworkManager {
     pub socket: TcpStream,
@@ -10,16 +12,14 @@ pub struct NetworkManager {
 }
 
 pub fn handle_network(network_manager: NetworkManager) {
-    let mut receiver_socket = network_manager.socket.clone();
+    let mut receiver_socket = BufferedReader::new(network_manager.socket.clone());
     let global_update_sender = network_manager.global_update_sender;
 
     spawn(move|| {
-        let mut buffer = [0_u8, ..8];
-
         loop {
-            match receiver_socket.read_at_least(8, &mut buffer) {
-                Ok(_) => {
-                    let packet = PlayerData::from_bytes(buffer);
+            match receiver_socket.read_line() {
+                Ok(data) => {
+                    let packet = json::decode(&*data).unwrap();
                     global_update_sender.send(packet);
                 },
 
@@ -33,8 +33,9 @@ pub fn handle_network(network_manager: NetworkManager) {
     let local_update_receiver = network_manager.local_update_receiver;
     let mut sender_socket = network_manager.socket;
     loop {
-        let packet = local_update_receiver.recv().to_bytes();
-        sender_socket.write(&packet);
+        let packet = json::encode(&local_update_receiver.recv());
+        sender_socket.write_str(&*packet);
+        sender_socket.write_char('\n');
     }
 }
 

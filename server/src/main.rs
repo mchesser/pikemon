@@ -1,7 +1,10 @@
+extern crate serialize;
 extern crate common;
 
+use serialize::json;
+
 use std::collections::HashMap;
-use std::io::{TcpListener, TcpStream};
+use std::io::{TcpListener, TcpStream, BufferedReader};
 use std::io::{Acceptor, Listener};
 use std::comm::{channel, Sender, Receiver};
 
@@ -96,7 +99,7 @@ fn client_handler(mut client: Client) {
     let id = client.id;
     client.stream.write_le_u32(client.id);
 
-    let mut data_reciever = client.stream.clone();
+    let mut data_reciever = BufferedReader::new(client.stream.clone());
     let mut data_sender = client.stream;
     let sender = client.sender;
     let receiver = client.receiver;
@@ -104,12 +107,11 @@ fn client_handler(mut client: Client) {
     // Receive data from client
     spawn(move|| {
         let id = id;
-        let mut buffer = [0_u8, ..8];
 
         loop {
-            match data_reciever.read_at_least(8, &mut buffer) {
-                Ok(_) => {
-                    let packet = Packet::Update(PlayerData::from_bytes(buffer));
+            match data_reciever.read_line() {
+                Ok(data) => {
+                    let packet = Packet::Update(json::decode(&*data).unwrap());
                     sender.send(packet);
                 },
 
@@ -125,10 +127,11 @@ fn client_handler(mut client: Client) {
     // Send data to client
     loop {
         let packet = match receiver.recv() {
-            Packet::Update(data) => data.to_bytes(),
+            Packet::Update(data) => json::encode(&data),
             Packet::PlayerQuit(_) => break,
         };
-        data_sender.write(&packet);
+        data_sender.write_str(&*packet);
+        data_sender.write_char('\n');
     }
 }
 

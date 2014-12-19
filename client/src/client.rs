@@ -7,7 +7,11 @@ use sdl2::event::poll_event;
 use sdl2::keycode::KeyCode;
 use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
+use sdl2::pixels::Color;
+use sdl2::render;
+use sdl2::render::{Renderer, RenderDriverIndex};
 use sdl2::surface::Surface;
+use sdl2::rect::Rect;
 
 use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
@@ -36,13 +40,15 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
         WIDTH, HEIGHT, OPENGL)
     {
         Ok(window) => window,
-        Err(err) => panic!("failed to create window: {}", err)
+        Err(e) => panic!("failed to create window: {}", e)
     };
 
-    let mut surface = match window.get_surface() {
-        Ok(surface) => surface,
-        Err(err) => panic!("failed to get window surface: {}", err)
+    let renderer = match Renderer::from_window(window, RenderDriverIndex::Auto, render::ACCELERATED)
+    {
+        Ok(window) => window,
+        Err(e) => panic!("failed to create renderer: {}", e)
     };
+    let _ = renderer.set_draw_color(Color::RGB(0xFF, 0, 0));
 
     let mut fast_mode = false;
 
@@ -78,34 +84,66 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
 
         if emulator.mem.gpu.ready_flag {
             emulator.mem.gpu.ready_flag = false;
-            render_screen(&mut surface, emulator.display());
+            let emulator_surface = Surface::from_data(emulator.display_mut(), SRC_WIDTH as int,
+                SRC_HEIGHT as int, 32, SRC_WIDTH as int * 4, 0, 0, 0, 0).unwrap();
+            let emulator_texture = renderer.create_texture_from_surface(&emulator_surface).unwrap();
+
+            let _ = renderer.clear();
+            let _ = renderer.copy(&emulator_texture, None, None);
 
             let self_data = data.last_state;
             for player in data.other_players.values() {
                 if player.map_id == self_data.map_id {
-                    let x = (player.pos_x as i32 - self_data.pos_x as i32) * 16 +
-                            (WIDTH / 2) as i32 - 8;
-                    let y = (player.pos_y as i32 - self_data.pos_y as i32) * 16 +
-                            (HEIGHT / 2) as i32  - 8;
+                    let x = (player.pos_x - self_data.pos_x) + (WIDTH / 2) as i32 - 16;
+                    let y = (player.pos_y - self_data.pos_y) + (HEIGHT / 2) as i32  - 12;
 
                     if x >= 0 && y >= 0 && x + 16 < WIDTH as i32 && y + 16 < HEIGHT as i32 {
-                        draw_square(&mut surface, x as uint, y as uint, 16, 16);
+                        let rect = Rect::new(x, y, 16, 16);
+                        renderer.fill_rect(&rect);
                     }
                 }
             }
 
-            window.update_surface();
+            renderer.present();
         }
     }
 }
 
 fn extract_player_data(id: u32, mem: &Memory) -> PlayerData {
+    // The current map id
+    const MAP_ID: u16 = 0xD35E;
+    // The player's Y coordinate on the current map
+    const MAP_Y: u16 = 0xD361;
+    // The player's Y coordinate on the current map
+    const MAP_X: u16 = 0xD362;
+    // The player's Y movement delta
+    const PLAYER_DY: u16 = 0xC103;
+    // The player's X movement delta
+    const PLAYER_DX: u16 = 0xC105;
+    // The direction which the player is facing (0: down, 4: up, 8: left, 16: right)
+    const PLAYER_DIR: u16 = 0xC109;
+    // When a player moves, this value counts down from 8 to 0
+    const WALK_COUNTER: u16 = 0xCFC5;
+
+    // Determine the offset of the player between tiles:
+    // When a player begins walking, the delta corresponding to direction the player is moving in is
+    // set, and the walk counter is set to 8. For each step of the walk counter, the player's
+    // position is moved by two pixels in the specified direction, until the walk counter is 0. When
+    // we reach this point, the players map coordinate updated, and the movement delta is cleared.
+    //
+    // Therefore to determine the player's tile offset, we adjust the walk counter so that it that
+    // it starts at 0 and goes to 15, and multiply it by the movement delta.
+    let walk_counter = mem.lb(WALK_COUNTER) as i32;
+    let movement = if walk_counter == 0 { 0 } else { 8 - walk_counter } * 2;
+    let dx = mem.lb(PLAYER_DX) as i8 as i32 * movement;
+    let dy = mem.lb(PLAYER_DY) as i8 as i32 * movement;
+
     PlayerData {
         player_id: id,
-        map_id: mem.lb(0xD35E),
-        pos_x: mem.lb(0xD362),
-        pos_y: mem.lb(0xD361),
-        direction: mem.lb(0xC109),
+        map_id: mem.lb(MAP_ID),
+        pos_x: mem.lb(MAP_X) as i32 * 16 + dx,
+        pos_y: mem.lb(MAP_Y) as i32 * 16 + dy,
+        direction: mem.lb(PLAYER_DIR),
     }
 }
 

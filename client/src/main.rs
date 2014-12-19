@@ -1,6 +1,7 @@
 extern crate common;
 extern crate sdl2;
 extern crate gb_emu;
+extern crate serialize;
 
 use std::collections::HashMap;
 use std::io::TcpStream;
