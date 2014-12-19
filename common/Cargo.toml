@@ -1,7 +1,7 @@
 [package]
-name = "pikemon_common"
+name = "common"
 version = "0.0.0"
 authors = ["Michael Chesser"]
 
 [lib]
-name = "pikemon_common"
+name = "common"

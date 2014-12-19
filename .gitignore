@@ -19,5 +19,5 @@
 *.app
 
 # Cargo
-/target
+*/target
 /common/Cargo.lock
