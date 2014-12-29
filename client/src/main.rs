@@ -15,6 +15,7 @@ use net::{NetworkManager, ClientDataManager};
 mod client;
 mod timer;
 mod net;
+mod sprite;
 
 fn main() {
     let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();

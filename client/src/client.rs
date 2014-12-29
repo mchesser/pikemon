@@ -9,7 +9,7 @@ use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
 use sdl2::pixels::Color;
 use sdl2::render;
-use sdl2::render::{Renderer, RenderDriverIndex};
+use sdl2::render::{Renderer, RenderDriverIndex, RendererFlip};
 use sdl2::surface::Surface;
 use sdl2::rect::Rect;
 
@@ -23,6 +23,7 @@ use common::PlayerData;
 
 use timer::Timer;
 use net::ClientDataManager;
+use sprite::Sprite;
 
 const SCALE: int = 1;
 const WIDTH: int = graphics::WIDTH as int * SCALE;
@@ -36,9 +37,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
 {
     sdl2::init(sdl2::INIT_EVERYTHING);
 
-    let window = match Window::new("GameBoy Emulator", PosCentered, PosCentered,
-        WIDTH, HEIGHT, OPENGL)
-    {
+    let window = match Window::new("Pikemon", PosCentered, PosCentered, WIDTH, HEIGHT, OPENGL) {
         Ok(window) => window,
         Err(e) => panic!("failed to create window: {}", e)
     };
@@ -49,6 +48,12 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
         Err(e) => panic!("failed to create renderer: {}", e)
     };
     let _ = renderer.set_draw_color(Color::RGB(0xFF, 0, 0));
+
+    let mut sprite_data = extract_player_sprite(&mut emulator.mem);
+    let sprite_surface = Surface::from_data(&mut sprite_data, SPRITESHEET_WIDTH as int,
+                SPRITESHEET_HEIGHT as int, 32, SPRITESHEET_WIDTH as int * 4, 0, 0, 0, 0).unwrap();
+    let sprite_tex = renderer.create_texture_from_surface(&sprite_surface).unwrap();
+    let sprite = Sprite::new(sprite_tex, 16, 16, SCALE as i32);
 
     let mut fast_mode = false;
 
@@ -94,12 +99,11 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
             let self_data = data.last_state;
             for player in data.other_players.values() {
                 if player.map_id == self_data.map_id {
-                    let x = (player.pos_x - self_data.pos_x) + (WIDTH / 2) as i32 - 16;
-                    let y = (player.pos_y - self_data.pos_y) + (HEIGHT / 2) as i32  - 12;
-
-                    if x >= 0 && y >= 0 && x + 16 < WIDTH as i32 && y + 16 < HEIGHT as i32 {
-                        let rect = Rect::new(x, y, 16, 16);
-                        renderer.fill_rect(&rect);
+                    let x = (player.pos_x - self_data.pos_x) + (WIDTH / 2) as i32 - 16 * SCALE as i32;
+                    let y = (player.pos_y - self_data.pos_y) + (HEIGHT / 2) as i32  - 12 * SCALE  as i32;
+                    if player.sprite_index != 0xFF {
+                        let (frame, flip) = determine_frame_index_and_flip(player.sprite_index);
+                        sprite.draw(&renderer, x, y, frame, flip);
                     }
                 }
             }
@@ -107,6 +111,67 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
             renderer.present();
         }
     }
+}
+
+fn determine_frame_index_and_flip(sprite_index: u8) -> (i32, RendererFlip) {
+    let (mut index, flip) = match sprite_index & 0xC {
+        0  => (0, RendererFlip::None),          // Down
+        4  => (1, RendererFlip::None),          // Up
+        8  => (2, RendererFlip::Horizontal),    // Right
+        12 => (2, RendererFlip::None),          // Left
+
+        // Unreachable
+        _  => (0, RendererFlip::None),
+    };
+
+    index += match sprite_index & 0x3 {
+        0 => 0,
+        1 => 3,
+        2 => 0,
+        3 => 3,
+
+        // Unreachable
+        _ => 0,
+    };
+
+    (index, flip)
+}
+
+const SPRITESHEET_WIDTH: uint = 16;
+const SPRITESHEET_HEIGHT: uint = 16 * 6;
+const BUFFER_SIZE: uint = SPRITESHEET_WIDTH * SPRITESHEET_HEIGHT * 4;
+
+fn extract_player_sprite(mem: &Memory) -> [u8, ..BUFFER_SIZE] {
+    let mut decode_buffer = [0, ..BUFFER_SIZE];
+
+    let bank_num = 5;
+    let mut sprite_offset = 0x4180 & 0x3FFF;
+
+    let mut tile_x = 0;
+    let mut tile_y = 0;
+    for _ in range(0, SPRITESHEET_WIDTH / 8 * SPRITESHEET_HEIGHT / 8) {
+        for y in range(0, 8) {
+            let low = mem.rom[bank_num][sprite_offset];
+            let high = mem.rom[bank_num][sprite_offset + 1];
+            sprite_offset += 2;
+            for x in range(0, 8) {
+                let color_id = ((((high >> x) & 1) << 1) | ((low >> x) & 1)) as uint;
+                let color = graphics::palette_lookup(208, color_id);
+
+                let offset = ((((1 - tile_x) * 8) + x) + ((tile_y * 8) + y) * 16) * 4;
+                decode_buffer[offset + 0] = color[0];
+                decode_buffer[offset + 1] = color[1];
+                decode_buffer[offset + 2] = color[2];
+                decode_buffer[offset + 3] = if color_id == 0 { 0 } else { 255 };
+            }
+        }
+        tile_x += 1;
+        if tile_x == 2 {
+            tile_x = 0;
+            tile_y += 1;
+        }
+    }
+    decode_buffer
 }
 
 fn extract_player_data(id: u32, mem: &Memory) -> PlayerData {
@@ -143,6 +208,7 @@ fn extract_player_data(id: u32, mem: &Memory) -> PlayerData {
         map_id: mem.lb(MAP_ID),
         pos_x: mem.lb(MAP_X) as i32 * 16 + dx,
         pos_y: mem.lb(MAP_Y) as i32 * 16 + dy,
+        sprite_index: mem.lb(0xC102),
         direction: mem.lb(PLAYER_DIR),
     }
 }
@@ -162,22 +228,4 @@ fn handle_joypad_event(joypad: &mut joypad::Joypad, keycode: KeyCode, state: joy
 
         _ => {},
     }
-}
-
-fn render_screen(surface: &mut Surface, display: &[u8]) {
-    surface.with_lock(|pixels| copy_memory(pixels, display));
-}
-
-fn draw_square(surface: &mut Surface, x: uint, y: uint, width: uint, height: uint) {
-    surface.with_lock(|pixels|
-        for dy in range(0, height) {
-            for dx in range(0, width) {
-                let draw_pos = ((y + dy) * SRC_WIDTH + (x + dx)) * 4;
-                pixels[draw_pos + 0] = 0xFF;
-                pixels[draw_pos + 1] = 0x00;
-                pixels[draw_pos + 2] = 0x00;
-                pixels[draw_pos + 3] = 0xFF;
-            }
-        }
-    );
 }

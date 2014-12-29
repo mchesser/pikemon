@@ -6,6 +6,7 @@ pub struct PlayerData {
     pub map_id: u8,
     pub pos_x: i32,
     pub pos_y: i32,
+    pub sprite_index: u8,
     pub direction: u8,
 }
 
@@ -16,6 +17,7 @@ impl PlayerData {
             map_id: 0xFF,
             pos_x: 0,
             pos_y: 0,
+            sprite_index: 0xFF,
             direction: 0xFF,
         }
     }

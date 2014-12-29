@@ -1,5 +1,5 @@
 use common::PlayerData;
-use std::comm::{channel, Sender, Receiver};
+use std::comm::{Sender, Receiver};
 use std::io::{TcpStream, BufferedReader};
 use std::collections::HashMap;
 
