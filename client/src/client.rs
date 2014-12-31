@@ -1,9 +1,5 @@
-use std::slice::bytes::copy_memory;
-use std::collections::HashMap;
-
 use sdl2;
-use sdl2::event::Event;
-use sdl2::event::poll_event;
+use sdl2::event::{Event, poll_event};
 use sdl2::keycode::KeyCode;
 use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
@@ -11,7 +7,6 @@ use sdl2::pixels::Color;
 use sdl2::render;
 use sdl2::render::{Renderer, RenderDriverIndex, RendererFlip};
 use sdl2::surface::Surface;
-use sdl2::rect::Rect;
 
 use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
@@ -44,7 +39,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
 
     let renderer = match Renderer::from_window(window, RenderDriverIndex::Auto, render::ACCELERATED)
     {
-        Ok(window) => window,
+        Ok(renderer) => renderer,
         Err(e) => panic!("failed to create renderer: {}", e)
     };
     let _ = renderer.set_draw_color(Color::RGB(0xFF, 0, 0));
@@ -89,7 +84,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>)
 
         if emulator.mem.gpu.ready_flag {
             emulator.mem.gpu.ready_flag = false;
-            let emulator_surface = Surface::from_data(emulator.display_mut(), SRC_WIDTH as int,
+            let emulator_surface = Surface::from_data(emulator.framebuffer_mut(), SRC_WIDTH as int,
                 SRC_HEIGHT as int, 32, SRC_WIDTH as int * 4, 0, 0, 0, 0).unwrap();
             let emulator_texture = renderer.create_texture_from_surface(&emulator_surface).unwrap();
 
@@ -149,14 +144,14 @@ fn extract_player_sprite(mem: &Memory) -> [u8, ..BUFFER_SIZE] {
 
     let mut tile_x = 0;
     let mut tile_y = 0;
-    for _ in range(0, SPRITESHEET_WIDTH / 8 * SPRITESHEET_HEIGHT / 8) {
-        for y in range(0, 8) {
-            let low = mem.rom[bank_num][sprite_offset];
-            let high = mem.rom[bank_num][sprite_offset + 1];
+    for _ in (0..SPRITESHEET_WIDTH / 8 * SPRITESHEET_HEIGHT / 8) {
+        for y in (0..8) {
+            let low = mem.cart.rom[bank_num][sprite_offset];
+            let high = mem.cart.rom[bank_num][sprite_offset + 1];
             sprite_offset += 2;
-            for x in range(0, 8) {
+            for x in (0..8) {
                 let color_id = ((((high >> x) & 1) << 1) | ((low >> x) & 1)) as uint;
-                let color = graphics::palette_lookup(208, color_id);
+                let mut color = graphics::palette_lookup(208, color_id);
 
                 let offset = ((((1 - tile_x) * 8) + x) + ((tile_y * 8) + y) * 16) * 4;
                 decode_buffer[offset + 0] = color[0];

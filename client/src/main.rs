@@ -1,12 +1,15 @@
+#![feature(slicing_syntax)]
+
 extern crate common;
 extern crate sdl2;
 extern crate gb_emu;
 extern crate serialize;
 
+use std::io::{File, TcpStream};
+use std::thread::Thread;
+use std::comm::channel;
 use std::collections::HashMap;
-use std::io::TcpStream;
-use std::comm::{channel, Sender, Receiver};
-use std::io::File;
+
 use gb_emu::emulator::Emulator;
 use common::PlayerData;
 
@@ -29,7 +32,7 @@ fn main() {
         local_update_receiver: local_update_receiver,
         global_update_sender: global_update_sender,
     };
-    spawn(move|| net::handle_network(network_manager));
+    Thread::spawn(move|| net::handle_network(network_manager)).detach();
 
     let mut emulator = box Emulator::new(|_cpu, _mem| net::collision_manager());
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();

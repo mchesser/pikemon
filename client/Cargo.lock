@@ -4,7 +4,7 @@ version = "0.0.0"
 dependencies = [
  "common 0.0.0",
  "gb_emu 0.0.1",
- "sdl2 0.0.10 (git+https://github.com/AngryLawyer/rust-sdl2.git)",
+ "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2.git)",
 ]
 
 [[package]]
@@ -17,6 +17,6 @@ version = "0.0.1"
 
 [[package]]
 name = "sdl2"
-version = "0.0.10"
-source = "git+https://github.com/AngryLawyer/rust-sdl2.git#2443bab12097018505dbb303a5fb70e86afa9bab"
+version = "0.0.13"
+source = "git+https://github.com/AngryLawyer/rust-sdl2.git#00f58349b9f7739faa48d1660a5eb01c070f386b"
 

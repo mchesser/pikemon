@@ -1,4 +1,6 @@
 use common::PlayerData;
+
+use std::thread::Thread;
 use std::comm::{Sender, Receiver};
 use std::io::{TcpStream, BufferedReader};
 use std::collections::HashMap;
@@ -11,11 +13,12 @@ pub struct NetworkManager {
     pub global_update_sender: Sender<PlayerData>,
 }
 
+
 pub fn handle_network(network_manager: NetworkManager) {
     let mut receiver_socket = BufferedReader::new(network_manager.socket.clone());
     let global_update_sender = network_manager.global_update_sender;
 
-    spawn(move|| {
+    Thread::spawn(move|| {
         loop {
             match receiver_socket.read_line() {
                 Ok(data) => {
@@ -24,11 +27,12 @@ pub fn handle_network(network_manager: NetworkManager) {
                 },
 
                 Err(e) => {
-                    panic!("Disconnected from server: {}", e);
+                    println!("Disconnected from server: {}", e);
+                    break;
                 },
             }
         }
-    });
+    }).detach();
 
     let local_update_receiver = network_manager.local_update_receiver;
     let mut sender_socket = network_manager.socket;

@@ -3,6 +3,7 @@ extern crate common;
 
 use serialize::json;
 
+use std::thread::Thread;
 use std::collections::HashMap;
 use std::io::{TcpListener, TcpStream, BufferedReader};
 use std::io::{Acceptor, Listener};
@@ -29,7 +30,7 @@ fn run_server(bind_addr: &str) {
     let (new_client_sender, new_client_receiver) = channel();
     let (packet_sender, packet_receiver) = channel();
 
-    spawn(move|| acceptor(listener, new_client_sender, packet_sender));
+    Thread::spawn(move|| acceptor(listener, new_client_sender, packet_sender)).detach();
 
     let mut clients: HashMap<u32, Sender<Packet>> = HashMap::new();
     loop {
@@ -85,7 +86,7 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, Sender<Packet
                     sender: packet_sender.clone(),
                 };
 
-                spawn(move|| client_handler(client));
+                Thread::spawn(move|| client_handler(client)).detach();
                 new_client_sender.send((next_id, server_sender));
 
                 next_id += 1;
@@ -97,7 +98,9 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, Sender<Packet
 fn client_handler(mut client: Client) {
     // Before the client can respond, it needs to know it's id
     let id = client.id;
-    client.stream.write_le_u32(client.id);
+    if let Err(e) = client.stream.write_le_u32(client.id) {
+        println!("Failed to connect with client: {}", e);
+    }
 
     let mut data_reciever = BufferedReader::new(client.stream.clone());
     let mut data_sender = client.stream;
@@ -105,7 +108,7 @@ fn client_handler(mut client: Client) {
     let receiver = client.receiver;
 
     // Receive data from client
-    spawn(move|| {
+    Thread::spawn(move|| {
         let id = id;
 
         loop {
@@ -115,14 +118,14 @@ fn client_handler(mut client: Client) {
                     sender.send(packet);
                 },
 
-                Err(e) => {
+                Err(_) => {
                     let packet = Packet::PlayerQuit(id);
                     sender.send(packet);
                     break;
                 },
             }
         }
-    });
+    }).detach();
 
     // Send data to client
     loop {
@@ -130,8 +133,10 @@ fn client_handler(mut client: Client) {
             Packet::Update(data) => json::encode(&data),
             Packet::PlayerQuit(_) => break,
         };
-        data_sender.write_str(&*packet);
-        data_sender.write_char('\n');
+
+        // TODO: properly handle errors here
+        let _ = data_sender.write_str(&*packet);
+        let _ = data_sender.write_char('\n');
     }
 }
 
