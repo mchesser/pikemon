@@ -1,5 +1,3 @@
-#![feature(slicing_syntax)]
-
 extern crate common;
 extern crate sdl2;
 extern crate gb_emu;
@@ -19,6 +17,7 @@ mod client;
 mod timer;
 mod net;
 mod sprite;
+mod interface;
 
 fn main() {
     let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();
@@ -45,5 +44,8 @@ fn main() {
         local_update_sender: local_update_sender,
         global_update_receiver: global_update_receiver,
     };
-    client::run(client_data_manager, emulator);
+
+    if let Err(e) = client::run(client_data_manager, emulator) {
+        println!("Pikemon encountered an error: {}", e);
+    }
 }

@@ -38,8 +38,10 @@ pub fn handle_network(network_manager: NetworkManager) {
     let mut sender_socket = network_manager.socket;
     loop {
         let packet = json::encode(&local_update_receiver.recv());
-        sender_socket.write_str(&*packet);
-        sender_socket.write_char('\n');
+
+        // TODO: better error handling
+        let _ = sender_socket.write_str(&*packet);
+        let _ = sender_socket.write_char('\n');
     }
 }
 
