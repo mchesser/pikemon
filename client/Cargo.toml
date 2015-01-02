@@ -10,7 +10,7 @@ name = "pikemon_client"
 path = "../common"
 
 [dependencies.gb_emu]
-path = "../../gb_emu"
+git = "https://github.com/quvarxa/gb_emu.git"
 
 [dependencies.sdl2]
 git = "https://github.com/AngryLawyer/rust-sdl2.git"

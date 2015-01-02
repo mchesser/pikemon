@@ -1,8 +1,11 @@
 //! Module for interfacing with the emulator
+use std::collections::HashMap;
+
 use sdl2::SdlResult;
 use sdl2::surface::Surface;
 use sdl2::render::{Renderer, Texture};
 
+use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
@@ -19,13 +22,49 @@ mod offsets {
     pub const PLAYER_DY: u16 = 0xC103;
     // The player's X movement delta
     pub const PLAYER_DX: u16 = 0xC105;
-    // The direction which the player is facing (0: down, 4: up, 8: left, 16: right)
+    // The direction which the player is facing (0: down, 4: up, 8: left, 10: right)
     pub const PLAYER_DIR: u16 = 0xC109;
     // When a player moves, this value counts down from 8 to 0
     pub const WALK_COUNTER: u16 = 0xCFC5;
 
     pub const PLAYER_SPRITE_ADDR: u16 = 0x4180;
     pub const PLAYER_SPRITE_BANK: uint = 5;
+
+    pub const NUM_SPRITES: u16 = 0xD4E1;
+    pub const COLLISION_CHECKING_EXIT_1: u16 = 0x0BA0;
+    pub const COLLISION_CHECKING_EXIT_2: u16 = 0x0BC4;
+
+    pub const SPRITE_INDEX: u16 = 0xFF8C;
+}
+
+pub fn collision_manager(cpu: &mut Cpu, mem: &mut Memory,
+    other_players: &mut HashMap<u32, PlayerData>)
+{
+    if (cpu.pc == offsets::COLLISION_CHECKING_EXIT_1 && mem.lb(offsets::NUM_SPRITES) == 0) ||
+        cpu.pc == offsets::COLLISION_CHECKING_EXIT_2
+    {
+        let map_id = mem.lb(offsets::MAP_ID);
+
+        // Determine the tile that the player is trying to move into.
+        let mut x = mem.lb(offsets::MAP_X);
+        let mut y = mem.lb(offsets::MAP_Y);
+
+        match mem.lb(offsets::PLAYER_DIR) {
+            0x00 => y += 1, // Down
+            0x04 => y -= 1, // Up
+            0x0C => x += 1, // Right
+            _    => x -= 1, // Left
+        }
+
+        // Check if there are any other players that occupy this tile
+        for player in other_players.values() {
+            if player.map_id == map_id {
+                if player.map_x == x && player.map_y == y {
+                    mem.sb(offsets::SPRITE_INDEX, 0xFF);
+                }
+            }
+        }
+    }
 }
 
 // FIXME: We need to adjust the approach here to allow for network latency
@@ -48,6 +87,8 @@ pub fn extract_player_data(id: u32, mem: &Memory) -> PlayerData {
         map_id: mem.lb(offsets::MAP_ID),
         pos_x: mem.lb(offsets::MAP_X) as i32 * 16 + dx,
         pos_y: mem.lb(offsets::MAP_Y) as i32 * 16 + dy,
+        map_x: mem.lb(offsets::MAP_X),
+        map_y: mem.lb(offsets::MAP_Y),
         sprite_index: mem.lb(0xC102),
         direction: mem.lb(offsets::PLAYER_DIR),
     }

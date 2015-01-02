@@ -3,6 +3,7 @@ extern crate sdl2;
 extern crate gb_emu;
 extern crate serialize;
 
+use std::cell::RefCell;
 use std::io::{File, TcpStream};
 use std::thread::Thread;
 use std::comm::channel;
@@ -33,19 +34,24 @@ fn main() {
     };
     Thread::spawn(move|| net::handle_network(network_manager)).detach();
 
-    let mut emulator = box Emulator::new(|_cpu, _mem| net::collision_manager());
+    let other_players = RefCell::new(HashMap::new());
+
+    let mut emulator = box Emulator::new(|cpu, mem| {
+        interface::collision_manager(cpu, mem, &mut *other_players.borrow_mut())
+    });
+
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
-    emulator.load_cart(cart.as_slice());
+    emulator.load_cart(cart.as_slice(), None);
     emulator.start();
 
     let client_data_manager = ClientDataManager {
-        other_players: HashMap::new(),
+        other_players: &other_players,
         last_state: PlayerData::new(id),
         local_update_sender: local_update_sender,
         global_update_receiver: global_update_receiver,
     };
 
     if let Err(e) = client::run(client_data_manager, emulator) {
-        println!("Pikemon encountered an error: {}", e);
+        println!("Pikemon encountered an error and was forced to close. ({})", e);
     }
 }
