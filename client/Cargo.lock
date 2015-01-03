@@ -3,8 +3,8 @@ name = "pikemon_client"
 version = "0.0.0"
 dependencies = [
  "common 0.0.0",
- "gb_emu 0.0.1",
- "sdl2 0.0.13 (git+https://github.com/AngryLawyer/rust-sdl2.git)",
+ "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
+ "sdl2 0.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -14,9 +14,10 @@ version = "0.0.0"
 [[package]]
 name = "gb_emu"
 version = "0.0.1"
+source = "git+https://github.com/quvarxa/gb_emu.git#eb122898bca5fc6fb5cb5520055161b4a40ad690"
 
 [[package]]
 name = "sdl2"
 version = "0.0.13"
-source = "git+https://github.com/AngryLawyer/rust-sdl2.git#00f58349b9f7739faa48d1660a5eb01c070f386b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
