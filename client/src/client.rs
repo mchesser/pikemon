@@ -88,7 +88,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
         // Draw the players
         let self_data = data.last_state;
-        for player in data.other_players.borrow().values() {
+        for player in data.game_data.borrow().other_players.values() {
             if player.map_id == self_data.map_id {
                 let x = (player.pos_x - self_data.pos_x - 16) * SCALE as i32 +
                     (WIDTH / 2) as i32;

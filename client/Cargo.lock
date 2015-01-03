@@ -14,7 +14,7 @@ version = "0.0.0"
 [[package]]
 name = "gb_emu"
 version = "0.0.1"
-source = "git+https://github.com/quvarxa/gb_emu.git#eb122898bca5fc6fb5cb5520055161b4a40ad690"
+source = "git+https://github.com/quvarxa/gb_emu.git#066cb5f174c7e78c51c317cf301b70a5712549e7"
 
 [[package]]
 name = "sdl2"

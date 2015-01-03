@@ -12,6 +12,8 @@ use gb_emu::graphics;
 use common::PlayerData;
 
 mod offsets {
+    #![allow(dead_code)]
+
     // The current map id
     pub const MAP_ID: u16 = 0xD35E;
     // The player's Y coordinate on the current map
@@ -27,28 +29,99 @@ mod offsets {
     // When a player moves, this value counts down from 8 to 0
     pub const WALK_COUNTER: u16 = 0xCFC5;
 
+    // The address of the player spritesheet encoded as 2bpp in the rom
     pub const PLAYER_SPRITE_ADDR: u16 = 0x4180;
     pub const PLAYER_SPRITE_BANK: uint = 5;
 
-    pub const NUM_SPRITES: u16 = 0xD4E1;
-    pub const COLLISION_CHECKING_EXIT_1: u16 = 0x0BA0;
-    pub const COLLISION_CHECKING_EXIT_2: u16 = 0x0BC4;
+    // Useful addresses for hacks
+    pub const LOADED_ROM_BANK: u16 = 0xFFB8;
+    pub const FRAME_COUNTER: u16 = 0xFFD5;
+    pub const BANK_SWITCH: u16 = 0x35D6;
 
+    // Addresses for sprite check hack
+    pub const NUM_SPRITES: u16 = 0xD4E1;
+    pub const OVERWORLD_LOOP_START: u16 = 0x03FF;
+    pub const SPRITE_CHECK_START: u16 = 0x0B23;
+    pub const SPRITE_CHECK_EXIT_1: u16 = 0x0BA0;
+    pub const SPRITE_CHECK_EXIT_2: u16 = 0x0BC4;
     pub const SPRITE_INDEX: u16 = 0xFF8C;
+
+    // Addresses for display text hack
+    pub const DISPLAY_TEXT_ID: u16 = 0x2920;
+    pub const DISPLAY_TEXT_ID_AFTER_INIT: u16 = 0x292B;
+    pub const DISPLAY_TEXT_SETUP_DONE: u16 = 0x29CD;
+    pub const TEXT_PROCESSOR_NEXT_CHAR_1: u16 = 0x1B55;
+    pub const TEXT_PROCESSOR_NEXT_CHAR_2: u16 = 0x1956;
+    pub const TEXT_PROCESSOR_END: u16 = 0x1B5E;
 }
 
-pub fn collision_manager(cpu: &mut Cpu, mem: &mut Memory,
-    other_players: &mut HashMap<u32, PlayerData>)
-{
-    if (cpu.pc == offsets::COLLISION_CHECKING_EXIT_1 && mem.lb(offsets::NUM_SPRITES) == 0) ||
-        cpu.pc == offsets::COLLISION_CHECKING_EXIT_2
+#[deriving(PartialEq)]
+enum DataState {
+    Normal,
+    Hacked,
+}
+
+pub struct GameData {
+    pub other_players: HashMap<u32, PlayerData>,
+    sprite_id_state: DataState,
+    text_state: DataState,
+    current_message: Vec<u8>,
+}
+
+impl GameData {
+    pub fn new() -> GameData {
+        GameData {
+            other_players: HashMap::new(),
+            sprite_id_state: DataState::Normal,
+            text_state: DataState::Normal,
+            current_message: Vec::new(),
+        }
+    }
+
+    pub fn load_message(&mut self, input: &str) {
+        // The expected format of the text in the game is *not* ascii. Here we convert the input
+        // UTF-8 string into the proper format.
+        // TODO: Clean up and refactor this code
+        self.current_message.push(0x50);
+        self.current_message.push(0x57);
+        for byte in input.bytes().rev() {
+            if 'a' as u8 <= byte && byte <= 'z' as u8 || 'A' as u8 <= byte && byte <= 'Z' as u8 {
+                self.current_message.push(byte + 0x3F);
+            }
+            else if byte == ',' as u8 {
+                self.current_message.push(0xF4);
+            }
+            else if byte == '.' as u8 {
+                self.current_message.push(0xE8);
+            }
+            else if byte == ' ' as u8 {
+                self.current_message.push(0x7F);
+            }
+            else if byte == '\n' as u8 {
+                self.current_message.push(0x4F);
+            }
+            else {
+                panic!("Unsupported character");
+            }
+        }
+        self.current_message.push(0x00);
+        println!("{}", &*self.current_message);
+    }
+}
+
+pub fn sprite_check_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameData) {
+    if cpu.pc == offsets::OVERWORLD_LOOP_START {
+        game_data.sprite_id_state = DataState::Normal;
+    }
+
+    if (cpu.pc == offsets::SPRITE_CHECK_EXIT_1 && mem.lb(offsets::NUM_SPRITES) == 0) ||
+        cpu.pc == offsets::SPRITE_CHECK_EXIT_2
     {
         let map_id = mem.lb(offsets::MAP_ID);
 
         // Determine the tile that the player is trying to move into.
         let mut x = mem.lb(offsets::MAP_X);
         let mut y = mem.lb(offsets::MAP_Y);
-
         match mem.lb(offsets::PLAYER_DIR) {
             0x00 => y += 1, // Down
             0x04 => y -= 1, // Up
@@ -57,13 +130,46 @@ pub fn collision_manager(cpu: &mut Cpu, mem: &mut Memory,
         }
 
         // Check if there are any other players that occupy this tile
-        for player in other_players.values() {
+        for player in game_data.other_players.values() {
             if player.map_id == map_id {
                 if player.map_x == x && player.map_y == y {
+                    // If there was a player set a sentinel value so the game thinks that there is
+                    // something in the way.
                     mem.sb(offsets::SPRITE_INDEX, 0xFF);
+                    game_data.sprite_id_state = DataState::Hacked;
                 }
             }
         }
+    }
+}
+
+pub fn display_text_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameData) {
+    if game_data.sprite_id_state == DataState::Hacked &&
+        cpu.pc == offsets::DISPLAY_TEXT_ID_AFTER_INIT
+    {
+        // Skip unnecessary parts of the DISPLAY_TEXT_ID routine releated to finding the correct
+        // message address when we are interacting with a hacked object.
+        cpu.jump(offsets::DISPLAY_TEXT_SETUP_DONE);
+        // Set the delay time (this is normally set in the middle of the code we just skipped)
+        mem.sb(offsets::FRAME_COUNTER, 30);
+
+        game_data.text_state = DataState::Hacked;
+        game_data.load_message("PLAYER has nothing\nto say.");
+    }
+
+    // If the text state is hacked when running the text processor, read from our message buffer
+    // instead of from the emulator's memory
+    if game_data.text_state == DataState::Hacked && (cpu.pc == offsets::TEXT_PROCESSOR_NEXT_CHAR_1
+        || cpu.pc == offsets::TEXT_PROCESSOR_NEXT_CHAR_2)
+    {
+        cpu.a = game_data.current_message.pop().unwrap_or(0x50);
+        cpu.pc += 1;
+    }
+
+    // Ensure that when we leave the text processor, we reset the text state so that the next call
+    // to the text processor will correctly read from the game.
+    if cpu.pc == offsets::TEXT_PROCESSOR_END {
+        game_data.text_state = DataState::Normal;
     }
 }
 

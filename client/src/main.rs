@@ -7,12 +7,12 @@ use std::cell::RefCell;
 use std::io::{File, TcpStream};
 use std::thread::Thread;
 use std::comm::channel;
-use std::collections::HashMap;
 
 use gb_emu::emulator::Emulator;
 use gb_emu::cart;
 use common::PlayerData;
 
+use interface::GameData;
 use net::{NetworkManager, ClientDataManager};
 use save::LocalSaveWrapper;
 
@@ -37,10 +37,10 @@ fn main() {
     };
     Thread::spawn(move|| net::handle_network(network_manager)).detach();
 
-    let other_players = RefCell::new(HashMap::new());
-
+    let game_data = RefCell::new(GameData::new());
     let mut emulator = box Emulator::new(|cpu, mem| {
-        interface::collision_manager(cpu, mem, &mut *other_players.borrow_mut())
+        interface::sprite_check_hack(cpu, mem, &mut *game_data.borrow_mut());
+        interface::display_text_hack(cpu, mem, &mut *game_data.borrow_mut());
     });
 
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
@@ -51,7 +51,7 @@ fn main() {
     emulator.start();
 
     let client_data_manager = ClientDataManager {
-        other_players: &other_players,
+        game_data: &game_data,
         last_state: PlayerData::new(id),
         local_update_sender: local_update_sender,
         global_update_receiver: global_update_receiver,

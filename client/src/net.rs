@@ -1,10 +1,10 @@
 use common::PlayerData;
+use interface::GameData;
 
 use std::cell::RefCell;
 use std::thread::Thread;
 use std::comm::{Sender, Receiver};
 use std::io::{TcpStream, BufferedReader};
-use std::collections::HashMap;
 
 use serialize::json;
 
@@ -46,7 +46,7 @@ pub fn handle_network(network_manager: NetworkManager) {
 }
 
 pub struct ClientDataManager<'a> {
-    pub other_players: &'a RefCell<HashMap<u32, PlayerData>>,
+    pub game_data: &'a RefCell<GameData>,
     pub last_state: PlayerData,
     pub local_update_sender: Sender<PlayerData>,
     pub global_update_receiver: Receiver<PlayerData>,
@@ -67,6 +67,6 @@ impl<'a> ClientDataManager<'a> {
 
     fn handle_recv(&mut self, update: PlayerData) {
         // TODO: handle disconnecting players
-        self.other_players.borrow_mut().insert(update.player_id, update);
+        self.game_data.borrow_mut().other_players.insert(update.player_id, update);
     }
 }
