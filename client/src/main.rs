@@ -1,3 +1,5 @@
+#![feature(slicing_syntax)]
+
 extern crate common;
 extern crate sdl2;
 extern crate gb_emu;

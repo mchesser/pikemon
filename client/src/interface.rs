@@ -216,14 +216,14 @@ pub fn extract_player_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Te
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_y < NUM_Y_TILES {
-        for y in (0..8) {
+        for y in 0..8 {
             // Colors stored in the 2bpp format are split over two bytes. The color's lower bit is
             // stored in the first byte and the high bit is stored in the second byte.
             let color_low = mem.cart.rom[offsets::PLAYER_SPRITE_BANK][sprite_offset];
             let color_high = mem.cart.rom[offsets::PLAYER_SPRITE_BANK][sprite_offset + 1];
             sprite_offset += 2;
 
-            for x in (0..8) {
+            for x in 0..8 {
                 let color_id = graphics::get_color_id(color_low, color_high, x);
                 let color = graphics::palette_lookup(208, color_id);
 
