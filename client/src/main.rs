@@ -10,15 +10,18 @@ use std::comm::channel;
 use std::collections::HashMap;
 
 use gb_emu::emulator::Emulator;
+use gb_emu::cart;
 use common::PlayerData;
 
 use net::{NetworkManager, ClientDataManager};
+use save::LocalSaveWrapper;
 
 mod client;
 mod timer;
 mod net;
 mod sprite;
 mod interface;
+mod save;
 
 fn main() {
     let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();
@@ -41,7 +44,10 @@ fn main() {
     });
 
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
-    emulator.load_cart(cart.as_slice(), None);
+    let save_path = Path::new("Pokemon Red.sav");
+
+    let save_file = box LocalSaveWrapper { path: save_path } as Box<cart::SaveFile>;
+    emulator.load_cart(cart.as_slice(), Some(save_file));
     emulator.start();
 
     let client_data_manager = ClientDataManager {
