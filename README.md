@@ -3,6 +3,8 @@ Pikemon
 
 A project to add multiplayer to Pokemon Red.
 
+![Screenshot](preview/preview.png)
+
 ## Current features:
 
 * Other players are visible and can block each other.
