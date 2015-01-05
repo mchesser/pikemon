@@ -145,5 +145,5 @@ fn client_handler(mut client: Client) {
 }
 
 fn main() {
-    run_server("127.0.0.1:8080");
+    run_server("0.0.0.0:8080");
 }

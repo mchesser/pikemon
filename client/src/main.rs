@@ -27,7 +27,8 @@ mod data;
 mod save;
 
 fn main() {
-    let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();
+    let ip_addr = &*std::os::args()[1];
+    let mut socket = TcpStream::connect((ip_addr, 8080)).unwrap();
     let id = socket.read_le_u32().unwrap();
 
     let (local_update_sender, local_update_receiver) = channel();
