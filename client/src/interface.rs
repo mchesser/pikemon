@@ -11,20 +11,18 @@ use gb_emu::graphics;
 
 use common::PlayerData;
 
+use data::Pokemon;
+
 mod offsets {
     #![allow(dead_code)]
 
-    // The current map id
+    // Player positional data
     pub const MAP_ID: u16 = 0xD35E;
-    // The player's Y coordinate on the current map
     pub const MAP_Y: u16 = 0xD361;
-    // The player's Y coordinate on the current map
     pub const MAP_X: u16 = 0xD362;
-    // The player's Y movement delta
     pub const PLAYER_DY: u16 = 0xC103;
-    // The player's X movement delta
     pub const PLAYER_DX: u16 = 0xC105;
-    // The direction which the player is facing (0: down, 4: up, 8: left, 10: right)
+    // The direction which the player is facing (0: down, 4: up, 8: left, 12: right)
     pub const PLAYER_DIR: u16 = 0xC109;
     // When a player moves, this value counts down from 8 to 0
     pub const WALK_COUNTER: u16 = 0xCFC5;
@@ -53,6 +51,73 @@ mod offsets {
     pub const TEXT_PROCESSOR_NEXT_CHAR_1: u16 = 0x1B55;
     pub const TEXT_PROCESSOR_NEXT_CHAR_2: u16 = 0x1956;
     pub const TEXT_PROCESSOR_END: u16 = 0x1B5E;
+
+    // Addresses for battle hack
+    pub const TRAINER_CLASS: u16 = 0xD031;
+    pub const TRAINER_NAME: u16 = 0xD04A;
+    pub const TRAINER_NUM: u16 = 0xD05D;
+    pub const ACTIVE_BATTLE: u16 = 0xD057;
+    pub const CURRRENT_OPPONENT: u16 = 0xD059;
+    pub const CURRENT_ENEMY_LEVEL: u16 = 0xD127;
+    pub const CURRENT_ENEMY_NICK: u16 = 0x0000;
+    pub const BATTLE_TYPE: u16 = 0xD05A;
+    pub const IS_LINK_BATTLE: u16 = 0xD12B;
+
+    // The Prof. Oak battle is unused by the game, so it is a convenient place to replace with our
+    // battle data.
+    pub const PROF_OAK_DATA_ADDR: u16 = 0x621D;
+    pub const PROF_OAK_DATA_BANK: uint = 0xE;
+}
+
+mod values {
+    #![allow(dead_code)]
+
+    pub const FALSE: u8 = 0;
+    pub const TRUE: u8 = 1;
+
+    pub enum PlayerDir {
+        Down = 0,
+        Up = 4,
+        Left = 8,
+        Right = 12,
+    }
+
+    pub enum BattleType {
+        Normal = 0,
+        OldMan = 1,
+        Safari = 2,
+    }
+
+    pub enum ActiveBattle {
+        None = 0,
+        Wild = 1,
+        Trainer = 2,
+    }
+
+    pub enum TrainerClass {
+        Unknown = 0x00,
+        ProfOak = 0x1A,
+    }
+
+    // This gets added to the trainer class when setting CURRENT_OPPONENT
+    pub const TRAINER_TAG: u8 = 0xC8;
+}
+
+struct Party {
+    pokemon: [(u8, Pokemon); 6],
+}
+
+fn load_party(party: &Party, mem: &mut Memory) {
+    let mut addr = (offsets::PROF_OAK_DATA_ADDR & 0x3FFF) as uint;
+    let bank = offsets::PROF_OAK_DATA_BANK;
+
+    mem.cart.rom[bank][addr] = 0xFF;
+    addr += 1;
+    for &(lvl, mon) in party.pokemon.iter() {
+        mem.cart.rom[bank][addr] = lvl;
+        mem.cart.rom[bank][addr + 1] = mon as u8;
+        addr += 2;
+    }
 }
 
 #[derive(PartialEq)]
@@ -65,6 +130,7 @@ pub struct GameData {
     pub other_players: HashMap<u32, PlayerData>,
     sprite_id_state: DataState,
     text_state: DataState,
+    opponent_state: DataState,
     current_message: Vec<u8>,
 }
 
@@ -74,6 +140,7 @@ impl GameData {
             other_players: HashMap::new(),
             sprite_id_state: DataState::Normal,
             text_state: DataState::Normal,
+            opponent_state: DataState::Normal,
             current_message: Vec::new(),
         }
     }
@@ -154,6 +221,7 @@ pub fn display_text_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
 
         game_data.text_state = DataState::Hacked;
         game_data.load_message("PLAYER has nothing\nto say.");
+        set_battle(cpu, mem, game_data);
     }
 
     // If the text state is hacked when running the text processor, read from our message buffer
@@ -170,6 +238,21 @@ pub fn display_text_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
     if cpu.pc == offsets::TEXT_PROCESSOR_END {
         game_data.text_state = DataState::Normal;
     }
+}
+
+// A temporary method to set a battle. In future we probably want to do more of the setup manually
+// so that we can do things like set the pokemon moves, EVs, DVs etc.
+fn set_battle(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameData) {
+    mem.sb(offsets::BATTLE_TYPE, values::BattleType::Normal as u8);
+    mem.sb(offsets::ACTIVE_BATTLE, values::ActiveBattle::Trainer as u8);
+    mem.sb(offsets::TRAINER_NUM, 1);
+    mem.sb(offsets::CURRRENT_OPPONENT, values::TrainerClass::ProfOak as u8 + values::TRAINER_TAG);
+
+    let party = Party {
+        pokemon: [(1, Pokemon::Weedle), (2, Pokemon::Weedle), (3, Pokemon::Weedle),
+        (4, Pokemon::Weedle), (5, Pokemon::Weedle), (6, Pokemon::Weedle)],
+    };
+    load_party(&party, mem);
 }
 
 // FIXME: We need to adjust the approach here to allow for network latency
