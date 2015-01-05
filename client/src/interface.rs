@@ -55,7 +55,7 @@ mod offsets {
     pub const TEXT_PROCESSOR_END: u16 = 0x1B5E;
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum DataState {
     Normal,
     Hacked,
@@ -105,7 +105,6 @@ impl GameData {
             }
         }
         self.current_message.push(0x00);
-        println!("{}", &*self.current_message);
     }
 }
 
@@ -211,7 +210,7 @@ pub fn extract_player_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Te
     const BYTES_PER_PIXEL: uint = 4;
     const BUFFER_SIZE: uint = SPRITESHEET_WIDTH * SPRITESHEET_HEIGHT * BYTES_PER_PIXEL;
 
-    let mut output_buffer = [0, ..BUFFER_SIZE];
+    let mut output_buffer = [0; BUFFER_SIZE];
     let mut sprite_offset = (offsets::PLAYER_SPRITE_ADDR & 0x3FFF) as uint;
 
     let (mut tile_x, mut tile_y) = (0, 0);

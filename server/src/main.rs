@@ -1,13 +1,13 @@
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
 
-use serialize::json;
+use rustc_serialize::json;
 
 use std::thread::Thread;
 use std::collections::HashMap;
 use std::io::{TcpListener, TcpStream, BufferedReader};
 use std::io::{Acceptor, Listener};
-use std::comm::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver};
 
 use common::PlayerData;
 
@@ -18,7 +18,6 @@ struct Client {
     sender: Sender<Packet>,
 }
 
-#[deriving(Show)]
 enum Packet {
     Update(PlayerData),
     PlayerQuit(u32),
@@ -37,13 +36,13 @@ fn run_server(bind_addr: &str) {
         select! {
             // Handle new player updates and send them to the other clients
             player_packet = packet_receiver.recv() => {
-                println!("Received: {}", player_packet);
-                match player_packet {
+                match player_packet.unwrap() {
                     Packet::Update(data) => {
                         let sender_id = data.player_id;
                         for (&client_id, client_sender) in clients.iter_mut() {
                             if client_id != sender_id {
-                                client_sender.send(Packet::Update(data));
+                                // TODO: Better error handling
+                                let _ = client_sender.send(Packet::Update(data));
                             }
                         }
                     },
@@ -51,7 +50,8 @@ fn run_server(bind_addr: &str) {
                     Packet::PlayerQuit(id) => {
                         println!("Player: {} disconnected", id);
                         for (_, client_sender) in clients.iter_mut() {
-                            client_sender.send(Packet::PlayerQuit(id));
+                            // TODO: Better error handling
+                            let _= client_sender.send(Packet::PlayerQuit(id));
                         }
                         clients.remove(&id);
                     },
@@ -59,7 +59,8 @@ fn run_server(bind_addr: &str) {
             },
 
             // Handle new clients
-            (id, sender) = new_client_receiver.recv() => {
+            packet = new_client_receiver.recv() => {
+                let (id, sender) = packet.unwrap();
                 println!("New client connected, id: {}", id);
                 clients.insert(id, sender);
             }
@@ -87,7 +88,8 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, Sender<Packet
                 };
 
                 Thread::spawn(move|| client_handler(client)).detach();
-                new_client_sender.send((next_id, server_sender));
+                // TODO: Better error handling
+                let _ = new_client_sender.send((next_id, server_sender));
 
                 next_id += 1;
             },
@@ -115,12 +117,14 @@ fn client_handler(mut client: Client) {
             match data_reciever.read_line() {
                 Ok(data) => {
                     let packet = Packet::Update(json::decode(&*data).unwrap());
-                    sender.send(packet);
+                    // TODO: Better error handling
+                    let _ = sender.send(packet);
                 },
 
                 Err(_) => {
                     let packet = Packet::PlayerQuit(id);
-                    sender.send(packet);
+                    // TODO: Better error handling
+                    let _ = sender.send(packet);
                     break;
                 },
             }
@@ -129,7 +133,7 @@ fn client_handler(mut client: Client) {
 
     // Send data to client
     loop {
-        let packet = match receiver.recv() {
+        let packet = match receiver.recv().unwrap() {
             Packet::Update(data) => json::encode(&data),
             Packet::PlayerQuit(_) => break,
         };

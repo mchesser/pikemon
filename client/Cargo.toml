@@ -13,4 +13,9 @@ path = "../common"
 git = "https://github.com/quvarxa/gb_emu.git"
 
 [dependencies.sdl2]
-git = "https://github.com/AngryLawyer/rust-sdl2"
+# Change to https://github.com/AngryLawyer/rust-sdl2 when fixes are merged
+git = "https://github.com/bitonic/rust-sdl2.git"
+
+[dependencies]
+rustc-serialize = "*"
+clock_ticks = "*"

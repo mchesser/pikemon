@@ -5,3 +5,6 @@ authors = ["Michael Chesser"]
 
 [lib]
 name = "common"
+
+[dependencies]
+rustc-serialize = "*"

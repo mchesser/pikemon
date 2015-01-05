@@ -1,14 +1,14 @@
 #![feature(slicing_syntax)]
 
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
 extern crate sdl2;
 extern crate gb_emu;
-extern crate serialize;
 
 use std::cell::RefCell;
 use std::io::{File, TcpStream};
 use std::thread::Thread;
-use std::comm::channel;
+use std::sync::mpsc::channel;
 
 use gb_emu::emulator::Emulator;
 use gb_emu::cart;

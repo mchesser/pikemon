@@ -8,3 +8,6 @@ name = "pikemon_server"
 
 [dependencies.common]
 path = "../common"
+
+[dependencies]
+rustc-serialize = "*"

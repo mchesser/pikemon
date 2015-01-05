@@ -1,6 +1,8 @@
-extern crate serialize;
+#![feature(old_orphan_check)]
 
-#[deriving(Copy, Show, PartialEq, Encodable, Decodable)]
+extern crate "rustc-serialize" as rustc_serialize;
+
+#[derive(Copy, Show, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct PlayerData {
     pub player_id: u32,
     pub map_id: u8,

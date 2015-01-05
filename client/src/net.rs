@@ -3,10 +3,10 @@ use interface::GameData;
 
 use std::cell::RefCell;
 use std::thread::Thread;
-use std::comm::{Sender, Receiver};
+use std::sync::mpsc::{Sender, Receiver};
 use std::io::{TcpStream, BufferedReader};
 
-use serialize::json;
+use rustc_serialize::json;
 
 pub struct NetworkManager {
     pub socket: TcpStream,
@@ -37,7 +37,7 @@ pub fn handle_network(network_manager: NetworkManager) {
     let local_update_receiver = network_manager.local_update_receiver;
     let mut sender_socket = network_manager.socket;
     loop {
-        let packet = json::encode(&local_update_receiver.recv());
+        let packet = json::encode(&local_update_receiver.recv().unwrap());
 
         // TODO: better error handling
         let _ = sender_socket.write_str(&*packet);
