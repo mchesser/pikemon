@@ -16,16 +16,16 @@ use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
 use gb_emu::joypad;
 
-// use common::PlayerData;
+use common::PlayerData;
 
 use timer::Timer;
 use net::ClientDataManager;
 use sprite::Sprite;
 use interface::{extract_player_data, extract_player_texture};
 
-const SCALE: int = 2;
-const WIDTH: int = graphics::WIDTH as int * SCALE;
-const HEIGHT: int = graphics::HEIGHT as int * SCALE;
+const SCALE: i32 = 2;
+const WIDTH: int = graphics::WIDTH as int * (SCALE as int);
+const HEIGHT: int = graphics::HEIGHT as int * (SCALE as int);
 
 pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> SdlResult<()>
     where F: FnMut(&mut Cpu, &mut Memory)
@@ -44,7 +44,9 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
     let mut fast_mode = false;
 
-    let mut timer = Timer::new();
+    let mut emulator_timer = Timer::new();
+    let mut network_timer = Timer::new();
+
     'main: loop {
         'event: loop {
             match poll_event() {
@@ -65,13 +67,14 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
             }
         }
 
-
-        if fast_mode || timer.elapsed_seconds() >= 1.0 / 60.0 {
-            timer.reset();
+        if fast_mode || emulator_timer.elapsed_seconds() >= 1.0 / 60.0 {
+            emulator_timer.reset();
             emulator.frame();
+        }
 
-            let id = data.last_state.player_id;
-            data.update(extract_player_data(id, &emulator.mem));
+        if network_timer.elapsed_seconds() >= 1.0 / 30.0 {
+            data.send_update(extract_player_data(&emulator.mem));
+            data.recv_update();
         }
 
         // If there is a new screen ready, copy the internal framebuffer to the screen texture
@@ -90,15 +93,10 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
         let self_data = data.last_state;
         for player in data.game_data.borrow().other_players.values() {
             if player.map_id == self_data.map_id {
-                let x = (player.pos_x - self_data.pos_x - 16) * SCALE as i32 +
-                    (WIDTH / 2) as i32;
-                let y = (player.pos_y - self_data.pos_y - 12) * SCALE as i32 +
-                    (HEIGHT / 2) as i32;
-
-                if player.sprite_index != 0xFF {
-                    let (frame, flip) = determine_frame_index_and_flip(player.sprite_index);
-                    try!(player_sprite.draw(&renderer, x, y, frame, flip));
-                }
+                let (x, y) = get_player_draw_position(&self_data, player);
+                let (frame, flip) = determine_frame_index_and_flip(player.direction,
+                    player.walk_counter);
+                try!(player_sprite.draw(&renderer, x * SCALE, y * SCALE, frame, flip));
             }
         }
 
@@ -107,25 +105,51 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
     Ok(())
 }
 
-fn determine_frame_index_and_flip(sprite_index: u8) -> (i32, RendererFlip) {
-    let (mut index, flip) = match sprite_index & 0xC {
+fn get_player_draw_position(self_player: &PlayerData, other_player: &PlayerData) -> (i32, i32) {
+    let base_x = (graphics::WIDTH as i32) / 2 - 16;
+    let base_y = (graphics::HEIGHT as i32) / 2 - 12;
+
+    let (self_x, self_y) = get_player_position(self_player);
+    let (other_x, other_y) = get_player_position(other_player);
+
+    (other_x - self_x + base_x, other_y - self_y + base_y)
+}
+
+fn get_player_position(player: &PlayerData) -> (i32, i32) {
+    let x = player.map_x as i32 * 16;
+    let y = player.map_y as i32 * 16;
+
+    // Determine the offset of the player between tiles:
+    // When a player begins walking, the walk counter is set to 8. For each step the walk counter
+    // decreases by one, and the player is moved by two pixels, until the walk counter is 0. When
+    // we reach this point, the players map coordinate updated.
+    let offset = if player.walk_counter == 0 { 0 } else { (8 - player.walk_counter) * 2 } as i32;
+
+    match player.direction {
+        0  => (x, y + offset),
+        4  => (x, y - offset),
+        8  => (x - offset, y),
+        12 => (x + offset, y),
+
+        _ => unreachable!(),
+    }
+}
+
+fn determine_frame_index_and_flip(direction: u8, walk_counter: u8) -> (i32, RendererFlip) {
+    let (mut index, flip) = match direction {
         0  => (0, RendererFlip::None),          // Down
         4  => (1, RendererFlip::None),          // Up
         8  => (2, RendererFlip::Horizontal),    // Right
         12 => (2, RendererFlip::None),          // Left
 
-        // Unreachable
-        _  => (0, RendererFlip::None),
+        _ => unreachable!(),
     };
 
-    index += match sprite_index & 0x3 {
+    index += match walk_counter / 4 {
         0 => 0,
         1 => 3,
-        2 => 0,
-        3 => 3,
 
-        // Unreachable
-        _ => 0,
+        _ => unreachable!(),
     };
 
     (index, flip)

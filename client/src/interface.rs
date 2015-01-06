@@ -255,30 +255,13 @@ fn set_battle(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameData) {
     load_party(&party, mem);
 }
 
-// FIXME: We need to adjust the approach here to allow for network latency
-pub fn extract_player_data(id: u32, mem: &Memory) -> PlayerData {
-    // Determine the offset of the player between tiles:
-    // When a player begins walking, the delta corresponding to direction the player is moving in is
-    // set, and the walk counter is set to 8. For each step of the walk counter, the player's
-    // position is moved by two pixels in the specified direction, until the walk counter is 0. When
-    // we reach this point, the players map coordinate updated, and the movement delta is cleared.
-    //
-    // Therefore to determine the player's tile offset, we adjust the walk counter so that it that
-    // it starts at 0 and goes to 15, and multiply it by the movement delta.
-    let walk_counter = mem.lb(offsets::WALK_COUNTER) as i32;
-    let movement = if walk_counter == 0 { 0 } else { 8 - walk_counter } * 2;
-    let dx = mem.lb(offsets::PLAYER_DX) as i8 as i32 * movement;
-    let dy = mem.lb(offsets::PLAYER_DY) as i8 as i32 * movement;
-
+pub fn extract_player_data(mem: &Memory) -> PlayerData {
     PlayerData {
-        player_id: id,
         map_id: mem.lb(offsets::MAP_ID),
-        pos_x: mem.lb(offsets::MAP_X) as i32 * 16 + dx,
-        pos_y: mem.lb(offsets::MAP_Y) as i32 * 16 + dy,
         map_x: mem.lb(offsets::MAP_X),
         map_y: mem.lb(offsets::MAP_Y),
-        sprite_index: mem.lb(0xC102),
         direction: mem.lb(offsets::PLAYER_DIR),
+        walk_counter: mem.lb(offsets::WALK_COUNTER),
     }
 }
 

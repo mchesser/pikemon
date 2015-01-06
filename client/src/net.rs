@@ -1,4 +1,4 @@
-use common::PlayerData;
+use common::{NetworkEvent, PlayerData, PlayerId};
 use interface::GameData;
 
 use std::cell::RefCell;
@@ -10,8 +10,8 @@ use rustc_serialize::json;
 
 pub struct NetworkManager {
     pub socket: TcpStream,
-    pub local_update_receiver: Receiver<PlayerData>,
-    pub global_update_sender: Sender<PlayerData>,
+    pub local_update_receiver: Receiver<NetworkEvent>,
+    pub global_update_sender: Sender<NetworkEvent>,
 }
 
 pub fn handle_network(network_manager: NetworkManager) {
@@ -46,27 +46,36 @@ pub fn handle_network(network_manager: NetworkManager) {
 }
 
 pub struct ClientDataManager<'a> {
+    pub id: PlayerId,
     pub game_data: &'a RefCell<GameData>,
     pub last_state: PlayerData,
-    pub local_update_sender: Sender<PlayerData>,
-    pub global_update_receiver: Receiver<PlayerData>,
+    pub local_update_sender: Sender<NetworkEvent>,
+    pub global_update_receiver: Receiver<NetworkEvent>,
 }
 
 impl<'a> ClientDataManager<'a> {
-    pub fn update(&mut self, new_state: PlayerData) {
+    pub fn send_update(&mut self, new_state: PlayerData) {
         if self.last_state != new_state {
             self.last_state = new_state;
-            self.local_update_sender.send(new_state);
+            self.local_update_sender.send(NetworkEvent::Update(self.id, new_state));
         }
+    }
 
+    pub fn recv_update(&mut self) {
         match self.global_update_receiver.try_recv() {
-            Ok(update) => self.handle_recv(update),
+            Ok(NetworkEvent::Update(id, data)) => self.handle_update(id, data),
+            Ok(NetworkEvent::PlayerQuit(id)) => self.handle_quit(id),
+
+            Ok(_) => unimplemented!(),
             _ => {},
         }
     }
 
-    fn handle_recv(&mut self, update: PlayerData) {
-        // TODO: handle disconnecting players
-        self.game_data.borrow_mut().other_players.insert(update.player_id, update);
+    fn handle_update(&mut self, id: PlayerId, data: PlayerData) {
+        self.game_data.borrow_mut().other_players.insert(id, data);
+    }
+
+    fn handle_quit(&mut self, id: PlayerId) {
+        self.game_data.borrow_mut().other_players.remove(&id);
     }
 }

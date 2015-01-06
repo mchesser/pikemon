@@ -6,13 +6,16 @@ extern crate sdl2;
 extern crate gb_emu;
 
 use std::cell::RefCell;
-use std::io::{File, TcpStream};
+use std::io::{File, TcpStream, BufferedReader};
 use std::thread::Thread;
 use std::sync::mpsc::channel;
 
+use rustc_serialize::json;
+
 use gb_emu::emulator::Emulator;
 use gb_emu::cart;
-use common::PlayerData;
+use common::{NetworkEvent, PlayerData, PlayerId};
+use common::error::{NetworkError, NetworkResult};
 
 use interface::GameData;
 use net::{NetworkManager, ClientDataManager};
@@ -28,8 +31,8 @@ mod save;
 
 fn main() {
     let ip_addr = &*std::os::args()[1];
-    let mut socket = TcpStream::connect((ip_addr, 8080)).unwrap();
-    let id = socket.read_le_u32().unwrap();
+    let socket = TcpStream::connect((ip_addr, 8080)).unwrap();
+    let id = get_id_from_server(socket.clone()).unwrap();
 
     let (local_update_sender, local_update_receiver) = channel();
     let (global_update_sender, global_update_receiver) = channel();
@@ -55,8 +58,9 @@ fn main() {
     emulator.start();
 
     let client_data_manager = ClientDataManager {
+        id: id,
         game_data: &game_data,
-        last_state: PlayerData::new(id),
+        last_state: PlayerData::new(),
         local_update_sender: local_update_sender,
         global_update_receiver: global_update_receiver,
     };
@@ -64,4 +68,15 @@ fn main() {
     if let Err(e) = client::run(client_data_manager, emulator) {
         println!("Pikemon encountered an error and was forced to close. ({})", e);
     }
+}
+
+fn get_id_from_server(socket: TcpStream) -> NetworkResult<PlayerId> {
+    let mut line_reader = BufferedReader::new(socket);
+    let line = try!(line_reader.read_line());
+
+    if let Ok(NetworkEvent::PlayerJoin(id)) = json::decode(&*line) {
+        return Ok(id);
+    }
+
+    Err(NetworkError::DecodeError)
 }
