@@ -37,4 +37,23 @@ impl PlayerData {
             walk_counter: 0,
         }
     }
+
+    /// Check if this player is occupying a particular tile
+    pub fn check_collision(&self, x: u8, y: u8) -> bool {
+        if self.map_x == x && self.map_y == y {
+            return true;
+        }
+
+        if self.walk_counter != 0 {
+            return (x, y) == match self.direction {
+                0  => (self.map_x, self.map_y + 1),
+                4  => (self.map_x, self.map_y - 1),
+                8  => (self.map_x - 1, self.map_y),
+                12 => (self.map_x + 1, self.map_y),
+                _  => return false
+            };
+        }
+
+        false
+    }
 }

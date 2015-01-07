@@ -88,6 +88,7 @@ impl<'a> ClientDataManager<'a> {
                 },
 
                 Ok(NetworkEvent::PlayerQuit(id)) => {
+                    println!("Player: {} quit.", id);
                     self.game_data.borrow_mut().other_players.remove(&id);
                 },
 
@@ -103,6 +104,7 @@ impl<'a> ClientDataManager<'a> {
                 },
 
                 Ok(NetworkEvent::UpdateRequest) => {
+                    println!("Responding to update request");
                     self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
                 },
 

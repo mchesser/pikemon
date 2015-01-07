@@ -223,15 +223,13 @@ pub fn sprite_check_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
 
         // Check if there are any other players that occupy this tile
         for (id, player) in game_data.other_players.iter() {
-            if player.map_id == map_id {
-                if player.map_x == x && player.map_y == y {
-                    // If there was a player set a sentinel value so the game thinks that there is
-                    // something in the way.
-                    mem.sb(offsets::SPRITE_INDEX, 0xFF);
-                    game_data.sprite_id_state = DataState::Hacked;
-                    game_data.last_interaction = *id;
-                    break;
-                }
+            if player.map_id == map_id && player.check_collision(x, y) {
+                // If there was a player set a sentinel value so the game thinks that there is
+                // something in the way.
+                mem.sb(offsets::SPRITE_INDEX, 0xFF);
+                game_data.sprite_id_state = DataState::Hacked;
+                game_data.last_interaction = *id;
+                break;
             }
         }
     }
