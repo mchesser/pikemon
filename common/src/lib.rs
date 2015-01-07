@@ -9,6 +9,7 @@ pub type PlayerId = u32;
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum NetworkEvent {
     Update(PlayerId, PlayerData),
+    UpdateRequest,
     PlayerJoin(PlayerId),
     PlayerQuit(PlayerId),
     Chat(PlayerId, String),

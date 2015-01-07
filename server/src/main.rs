@@ -53,6 +53,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                     NetworkEvent::BattleDataRequest(to, _) => {
                         try!(send_to_client(&mut clients[to], &message))
                     },
+
                     NetworkEvent::BattleDataResponse(to, _) => {
                         try!(send_to_client(&mut clients[to], &message))
                     },
@@ -66,6 +67,11 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                 let (id, sender) = try!(packet);
                 println!("New client connected, id: {}", id);
                 clients.insert(id, sender);
+
+                // Tell connected clients that they need to send an update to the new client
+                for (_, client_stream) in clients.iter_mut() {
+                    try!(send_to_client(client_stream, &NetworkEvent::UpdateRequest));
+                }
             }
         }
     }

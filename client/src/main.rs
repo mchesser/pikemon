@@ -60,6 +60,7 @@ fn main() {
         id: id,
         game_data: &game_data,
         last_state: PlayerData::new(),
+        new_update: false,
         local_update_sender: local_update_sender,
         global_update_receiver: global_update_receiver,
     };

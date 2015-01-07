@@ -72,13 +72,13 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
             let game_ready = data.game_data.borrow().game_state == GameState::Normal;
             if game_ready {
                 emulator.frame();
+                data.update_player_data(extract_player_data(&emulator.mem));
             }
         }
 
         if network_timer.elapsed_seconds() >= 1.0 / 30.0 {
             network_timer.reset();
-
-            data.send_update(extract_player_data(&emulator.mem));
+            data.send_update();
             data.recv_update(&mut emulator.mem);
         }
 
@@ -136,7 +136,7 @@ fn get_player_position(player: &PlayerData) -> (i32, i32) {
         8  => (x - offset, y),
         12 => (x + offset, y),
 
-        _ => unreachable!(),
+        _  => (x, y), // Usually unreachable
     }
 }
 
@@ -147,14 +147,14 @@ fn determine_frame_index_and_flip(direction: u8, walk_counter: u8) -> (i32, Rend
         8  => (2, RendererFlip::Horizontal),    // Right
         12 => (2, RendererFlip::None),          // Left
 
-        _ => unreachable!(),
+        _  => (0, RendererFlip::None),          // Usually unreachable
     };
 
     index += match walk_counter / 4 {
         0 => 0,
         1 => 3,
 
-        _ => unreachable!(),
+        _ => 0, // Usually unreachable
     };
 
     (index, flip)

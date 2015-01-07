@@ -51,16 +51,23 @@ pub struct ClientDataManager<'a> {
     pub id: PlayerId,
     pub game_data: &'a RefCell<GameData>,
     pub last_state: PlayerData,
+    pub new_update: bool,
     pub local_update_sender: Sender<NetworkEvent>,
     pub global_update_receiver: Receiver<NetworkEvent>,
 }
 
 impl<'a> ClientDataManager<'a> {
-    pub fn send_update(&mut self, new_state: PlayerData) {
-        if self.last_state != new_state {
-            // println!("Sending update");
-            self.last_state = new_state;
-            self.local_update_sender.send(NetworkEvent::Update(self.id, new_state));
+    pub fn update_player_data(&mut self, data: PlayerData) {
+        if self.last_state != data {
+            self.last_state = data;
+            self.new_update = true;
+        }
+    }
+
+    pub fn send_update(&mut self) {
+        if self.new_update {
+            self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
+            self.new_update = false;
         }
 
         match self.game_data.borrow_mut().network_request {
@@ -74,33 +81,34 @@ impl<'a> ClientDataManager<'a> {
     }
 
     pub fn recv_update(&mut self, mem: &mut Memory) {
-        match self.global_update_receiver.try_recv() {
-            Ok(NetworkEvent::Update(id, data)) => self.handle_update(id, data),
-            Ok(NetworkEvent::PlayerQuit(id)) => self.handle_quit(id),
-            Ok(NetworkEvent::BattleDataRequest(_, id)) => self.send_battle_data(id, mem),
-            Ok(NetworkEvent::BattleDataResponse(_, party)) => self.handle_battle_data(party, mem),
+        loop {
+            match self.global_update_receiver.try_recv() {
+                Ok(NetworkEvent::Update(id, data)) => {
+                    self.game_data.borrow_mut().other_players.insert(id, data);
+                },
 
-            Ok(_) => unimplemented!(),
-            _ => {},
+                Ok(NetworkEvent::PlayerQuit(id)) => {
+                    self.game_data.borrow_mut().other_players.remove(&id);
+                },
+
+                Ok(NetworkEvent::BattleDataRequest(_, id)) => {
+                    println!("Responding to battle request");
+                    let party = interface::extract_player_party(mem);
+                    self.local_update_sender.send(NetworkEvent::BattleDataResponse(id, party));
+                },
+
+                Ok(NetworkEvent::BattleDataResponse(_, party)) => {
+                    self.game_data.borrow_mut().game_state = GameState::Normal;
+                    interface::set_battle(mem, party);
+                },
+
+                Ok(NetworkEvent::UpdateRequest) => {
+                    self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
+                },
+
+                Ok(_) => unimplemented!(),
+                _ => break,
+            }
         }
-    }
-
-    fn handle_update(&mut self, id: PlayerId, data: PlayerData) {
-        self.game_data.borrow_mut().other_players.insert(id, data);
-    }
-
-    fn handle_quit(&mut self, id: PlayerId) {
-        self.game_data.borrow_mut().other_players.remove(&id);
-    }
-
-    fn send_battle_data(&self, to: PlayerId, mem: &mut Memory) {
-        println!("Responding to battle request");
-        let party = interface::extract_player_party(mem);
-        self.local_update_sender.send(NetworkEvent::BattleDataResponse(to, party));
-    }
-
-    fn handle_battle_data(&mut self, party: Party, mem: &mut Memory) {
-        self.game_data.borrow_mut().game_state = GameState::Normal;
-        interface::set_battle(mem, party);
     }
 }
