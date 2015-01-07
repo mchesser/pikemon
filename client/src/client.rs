@@ -21,7 +21,7 @@ use common::PlayerData;
 use timer::Timer;
 use net::ClientDataManager;
 use sprite::Sprite;
-use interface::{extract_player_data, extract_player_texture};
+use interface::{extract_player_data, extract_player_texture, GameState};
 
 const SCALE: i32 = 2;
 const WIDTH: int = graphics::WIDTH as int * (SCALE as int);
@@ -69,12 +69,17 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
         if fast_mode || emulator_timer.elapsed_seconds() >= 1.0 / 60.0 {
             emulator_timer.reset();
-            emulator.frame();
+            let game_ready = data.game_data.borrow().game_state == GameState::Normal;
+            if game_ready {
+                emulator.frame();
+            }
         }
 
         if network_timer.elapsed_seconds() >= 1.0 / 30.0 {
+            network_timer.reset();
+
             data.send_update(extract_player_data(&emulator.mem));
-            data.recv_update();
+            data.recv_update(&mut emulator.mem);
         }
 
         // If there is a new screen ready, copy the internal framebuffer to the screen texture

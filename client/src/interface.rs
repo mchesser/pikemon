@@ -9,9 +9,8 @@ use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
-use common::PlayerData;
-
-use data::Pokemon;
+use common::{PlayerData, PlayerId};
+use common::data::{self, Party, PokemonData};
 
 mod offsets {
     #![allow(dead_code)]
@@ -67,6 +66,15 @@ mod offsets {
     // battle data.
     pub const PROF_OAK_DATA_ADDR: u16 = 0x621D;
     pub const PROF_OAK_DATA_BANK: uint = 0xE;
+
+    // Addresses for party data
+    pub const PARTY_COUNT: u16 = 0xD163;
+    pub const PARTY_POKE_1: u16 = 0xD16B;
+    pub const PARTY_POKE_2: u16 = 0xD197;
+    pub const PARTY_POKE_3: u16 = 0xD1C3;
+    pub const PARTY_POKE_4: u16 = 0xD1EF;
+    pub const PARTY_POKE_5: u16 = 0xD21B;
+    pub const PARTY_POKE_6: u16 = 0xD247;
 }
 
 mod values {
@@ -103,21 +111,21 @@ mod values {
     pub const TRAINER_TAG: u8 = 0xC8;
 }
 
-struct Party {
-    pokemon: [(u8, Pokemon); 6],
-}
+fn load_party(party: data::Party, mem: &mut Memory) {
+    let pokemon = party.pokemon;
+    let pokemon_array = [pokemon.0, pokemon.1, pokemon.2, pokemon.3, pokemon.4, pokemon.5];
 
-fn load_party(party: &Party, mem: &mut Memory) {
     let mut addr = (offsets::PROF_OAK_DATA_ADDR & 0x3FFF) as uint;
     let bank = offsets::PROF_OAK_DATA_BANK;
 
     mem.cart.rom[bank][addr] = 0xFF;
     addr += 1;
-    for &(lvl, mon) in party.pokemon.iter() {
-        mem.cart.rom[bank][addr] = lvl;
-        mem.cart.rom[bank][addr + 1] = mon as u8;
+    for mon in pokemon_array.iter().take(party.num_pokemon as uint) {
+        mem.cart.rom[bank][addr] = mon.level;
+        mem.cart.rom[bank][addr + 1] = mon.species;
         addr += 2;
     }
+    mem.cart.rom[bank][addr] = 0;
 }
 
 #[derive(PartialEq)]
@@ -126,22 +134,40 @@ enum DataState {
     Hacked,
 }
 
+#[derive(PartialEq)]
+pub enum GameState {
+    Normal,
+    Waiting,
+}
+
+#[derive(PartialEq)]
+pub enum NetworkRequest {
+    None,
+    Battle(PlayerId),
+}
+
 pub struct GameData {
+    pub game_state: GameState,
+    pub network_request: NetworkRequest,
     pub other_players: HashMap<u32, PlayerData>,
+    last_interaction: u32,
     sprite_id_state: DataState,
     text_state: DataState,
-    opponent_state: DataState,
     current_message: Vec<u8>,
+    current_battle: Option<Party>,
 }
 
 impl GameData {
     pub fn new() -> GameData {
         GameData {
+            game_state: GameState::Normal,
+            network_request: NetworkRequest::None,
             other_players: HashMap::new(),
+            last_interaction: 0,
             sprite_id_state: DataState::Normal,
             text_state: DataState::Normal,
-            opponent_state: DataState::Normal,
             current_message: Vec::new(),
+            current_battle: None,
         }
     }
 
@@ -196,13 +222,15 @@ pub fn sprite_check_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
         }
 
         // Check if there are any other players that occupy this tile
-        for player in game_data.other_players.values() {
+        for (id, player) in game_data.other_players.iter() {
             if player.map_id == map_id {
                 if player.map_x == x && player.map_y == y {
                     // If there was a player set a sentinel value so the game thinks that there is
                     // something in the way.
                     mem.sb(offsets::SPRITE_INDEX, 0xFF);
                     game_data.sprite_id_state = DataState::Hacked;
+                    game_data.last_interaction = *id;
+                    break;
                 }
             }
         }
@@ -221,7 +249,11 @@ pub fn display_text_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
 
         game_data.text_state = DataState::Hacked;
         game_data.load_message("PLAYER has nothing\nto say.");
-        set_battle(cpu, mem, game_data);
+
+        game_data.network_request = NetworkRequest::Battle(game_data.last_interaction);
+        // We probably want to defer this until as late as possible, to avoid latency causing too
+        // much of an issue
+        game_data.game_state = GameState::Waiting;
     }
 
     // If the text state is hacked when running the text processor, read from our message buffer
@@ -242,17 +274,13 @@ pub fn display_text_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
 
 // A temporary method to set a battle. In future we probably want to do more of the setup manually
 // so that we can do things like set the pokemon moves, EVs, DVs etc.
-fn set_battle(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameData) {
+pub fn set_battle(mem: &mut Memory, party: Party) {
     mem.sb(offsets::BATTLE_TYPE, values::BattleType::Normal as u8);
     mem.sb(offsets::ACTIVE_BATTLE, values::ActiveBattle::Trainer as u8);
     mem.sb(offsets::TRAINER_NUM, 1);
     mem.sb(offsets::CURRRENT_OPPONENT, values::TrainerClass::ProfOak as u8 + values::TRAINER_TAG);
 
-    let party = Party {
-        pokemon: [(1, Pokemon::Weedle), (2, Pokemon::Weedle), (3, Pokemon::Weedle),
-        (4, Pokemon::Weedle), (5, Pokemon::Weedle), (6, Pokemon::Weedle)],
-    };
-    load_party(&party, mem);
+    load_party(party, mem);
 }
 
 pub fn extract_player_data(mem: &Memory) -> PlayerData {
@@ -262,6 +290,48 @@ pub fn extract_player_data(mem: &Memory) -> PlayerData {
         map_y: mem.lb(offsets::MAP_Y),
         direction: mem.lb(offsets::PLAYER_DIR),
         walk_counter: mem.lb(offsets::WALK_COUNTER),
+    }
+}
+
+pub fn extract_pokemon(mem: &Memory, addr: u16) -> PokemonData {
+    PokemonData {
+        species: mem.lb(addr+0),
+        hp: mem.lw(addr+1),
+        unknown: mem.lb(addr+3),
+        status: mem.lb(addr+4),
+        type1: mem.lb(addr+5),
+        type2: mem.lb(addr+6),
+        catch_rate: mem.lb(addr+7),
+        moves: (mem.lb(addr+8), mem.lb(addr+9), mem.lb(addr+10), mem.lb(addr+11)),
+        ot_id: mem.lw(addr+12),
+
+        exp: (mem.lb(addr+14), mem.lb(addr+15), mem.lb(addr+16)),
+        hp_ev: mem.lw(addr+17),
+        attack_ev: mem.lw(addr+19),
+        defense_ev: mem.lw(addr+21),
+        speed_ev: mem.lw(addr+23),
+        special_ev: mem.lw(addr+25),
+        individual_values: (mem.lb(addr+27), mem.lb(addr+28)),
+        move_pp: (mem.lb(addr+29), mem.lb(addr+30), mem.lb(addr+31), mem.lb(addr+32)),
+
+        level: mem.lb(addr+33),
+        max_hp: mem.lw(addr+34),
+        attack: mem.lw(addr+36),
+        defense: mem.lw(addr+38),
+        speed: mem.lw(addr+40),
+        special: mem.lw(addr+42),
+    }
+}
+
+pub fn extract_player_party(mem: &Memory) -> Party {
+    Party {
+        num_pokemon: mem.lb(offsets::PARTY_COUNT),
+        pokemon: (extract_pokemon(mem, offsets::PARTY_POKE_1),
+            extract_pokemon(mem, offsets::PARTY_POKE_2),
+            extract_pokemon(mem, offsets::PARTY_POKE_3),
+            extract_pokemon(mem, offsets::PARTY_POKE_4),
+            extract_pokemon(mem, offsets::PARTY_POKE_5),
+            extract_pokemon(mem, offsets::PARTY_POKE_6)),
     }
 }
 

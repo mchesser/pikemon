@@ -26,7 +26,6 @@ mod timer;
 mod net;
 mod sprite;
 mod interface;
-mod data;
 mod save;
 
 fn main() {

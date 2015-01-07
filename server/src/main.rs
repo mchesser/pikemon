@@ -50,6 +50,13 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                         }
                     },
 
+                    NetworkEvent::BattleDataRequest(to, _) => {
+                        try!(send_to_client(&mut clients[to], &message))
+                    },
+                    NetworkEvent::BattleDataResponse(to, _) => {
+                        try!(send_to_client(&mut clients[to], &message))
+                    },
+
                     _ => unimplemented!(),
                 }
             },

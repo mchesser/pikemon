@@ -2,6 +2,7 @@
 extern crate "rustc-serialize" as rustc_serialize;
 
 pub mod error;
+pub mod data;
 
 pub type PlayerId = u32;
 
@@ -11,6 +12,8 @@ pub enum NetworkEvent {
     PlayerJoin(PlayerId),
     PlayerQuit(PlayerId),
     Chat(PlayerId, String),
+    BattleDataRequest(PlayerId, PlayerId),
+    BattleDataResponse(PlayerId, data::Party),
     ServerFailure,
 }
 
