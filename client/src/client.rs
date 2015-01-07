@@ -6,8 +6,7 @@ use sdl2::event::{Event, poll_event};
 use sdl2::keycode::KeyCode;
 use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
-use sdl2::render;
-use sdl2::render::{Renderer, RenderDriverIndex, RendererFlip, TextureAccess};
+use sdl2::render::{self, Renderer, RenderDriverIndex, RendererFlip, BlendMode, TextureAccess};
 use sdl2::pixels::PixelFormatFlag;
 
 use gb_emu::cpu::Cpu;
@@ -37,6 +36,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
         render::ACCELERATED));
 
     let player_texture = try!(extract_player_texture(&renderer, &mut emulator.mem));
+    try!(player_texture.set_blend_mode(BlendMode::Blend));
     let player_sprite = Sprite::new(player_texture, 16, 16, SCALE as i32);
 
     let screen_texture = try!(renderer.create_texture(PixelFormatFlag::ARGB8888,

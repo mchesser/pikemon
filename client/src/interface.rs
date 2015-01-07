@@ -381,7 +381,13 @@ pub fn extract_player_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Te
         }
     }
 
+    const RMASK: u32 = 0x000000FF;
+    const GMASK: u32 = 0x0000FF00;
+    const BMASK: u32 = 0x00FF0000;
+    const AMASK: u32 = 0xFF000000;
+
     let surface = try!(Surface::from_data(&mut output_buffer, SPRITESHEET_WIDTH as int,
-        SPRITESHEET_HEIGHT as int, 32, (SPRITESHEET_WIDTH * BYTES_PER_PIXEL) as int, 0, 0, 0, 0));
+        SPRITESHEET_HEIGHT as int, 32, (SPRITESHEET_WIDTH * BYTES_PER_PIXEL) as int, RMASK, GMASK,
+        BMASK, AMASK));
     renderer.create_texture_from_surface(&surface)
 }
