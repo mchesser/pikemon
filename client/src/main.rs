@@ -31,7 +31,6 @@ mod save;
 fn main() {
     let ip_addr = &*std::os::args()[1];
     let socket = TcpStream::connect((ip_addr, 8080)).unwrap();
-    let id = get_id_from_server(socket.clone()).unwrap();
 
     let (local_update_sender, local_update_receiver) = channel();
     let (global_update_sender, global_update_receiver) = channel();
@@ -41,7 +40,7 @@ fn main() {
         local_update_receiver: local_update_receiver,
         global_update_sender: global_update_sender,
     };
-    Thread::spawn(move|| net::handle_network(network_manager)).detach();
+    let id = net::handle_network(network_manager).unwrap();
 
     let game_data = RefCell::new(GameData::new());
     let mut emulator = box Emulator::new(|cpu, mem| {
@@ -68,15 +67,4 @@ fn main() {
     if let Err(e) = client::run(client_data_manager, emulator) {
         println!("Pikemon encountered an error and was forced to close. ({})", e);
     }
-}
-
-fn get_id_from_server(socket: TcpStream) -> NetworkResult<PlayerId> {
-    let mut line_reader = BufferedReader::new(socket);
-    let line = try!(line_reader.read_line());
-
-    if let Ok(NetworkEvent::PlayerJoin(id)) = json::decode(&*line) {
-        return Ok(id);
-    }
-
-    Err(NetworkError::DecodeError)
 }

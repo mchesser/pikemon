@@ -76,7 +76,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
             }
         }
 
-        if network_timer.elapsed_seconds() >= 1.0 / 30.0 {
+        if network_timer.elapsed_seconds() >= 1.0 / 60.0 {
             network_timer.reset();
             data.send_update();
             data.recv_update(&mut emulator.mem);

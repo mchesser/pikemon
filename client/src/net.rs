@@ -6,6 +6,7 @@ use std::io::{TcpStream, BufferedReader};
 use rustc_serialize::json;
 
 use common::{NetworkEvent, PlayerData, PlayerId};
+use common::error::{NetworkError, NetworkResult};
 use common::data::Party;
 use interface::{self, GameData, NetworkRequest, GameState};
 use gb_emu::mmu::Memory;
@@ -16,14 +17,21 @@ pub struct NetworkManager {
     pub global_update_sender: Sender<NetworkEvent>,
 }
 
-pub fn handle_network(network_manager: NetworkManager) {
+pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId> {
     let mut receiver_socket = BufferedReader::new(network_manager.socket.clone());
-    let global_update_sender = network_manager.global_update_sender;
 
+    let join_line = try!(receiver_socket.read_line());
+    let player_id = match json::decode(&*join_line) {
+        Ok(NetworkEvent::PlayerJoin(id)) => id,
+        _ => return Err(NetworkError::DecodeError),
+    };
+
+    let global_update_sender = network_manager.global_update_sender;
     Thread::spawn(move|| {
         loop {
             match receiver_socket.read_line() {
                 Ok(data) => {
+                    //println!("{}", data);
                     let packet = json::decode(&*data).unwrap();
                     global_update_sender.send(packet);
                 },
@@ -38,13 +46,17 @@ pub fn handle_network(network_manager: NetworkManager) {
 
     let local_update_receiver = network_manager.local_update_receiver;
     let mut sender_socket = network_manager.socket;
-    loop {
-        let packet = json::encode(&local_update_receiver.recv().unwrap());
+    Thread::spawn(move|| {
+        loop {
+            let packet = json::encode(&local_update_receiver.recv().unwrap());
 
-        // TODO: better error handling
-        let _ = sender_socket.write_str(&*packet);
-        let _ = sender_socket.write_char('\n');
-    }
+            // TODO: better error handling
+            let _ = sender_socket.write_str(&*packet);
+            let _ = sender_socket.write_char('\n');
+        }
+    }).detach();
+
+    Ok(player_id)
 }
 
 pub struct ClientDataManager<'a> {
