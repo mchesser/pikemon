@@ -8,7 +8,7 @@ use sdl2::keycode::KeyCode;
 use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
 use sdl2::render::{self, Renderer, RenderDriverIndex, RendererFlip, BlendMode, TextureAccess};
-use sdl2::pixels::PixelFormatFlag;
+use sdl2::pixels::{PixelFormatFlag, Color};
 
 use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
@@ -24,9 +24,12 @@ use sprite::Sprite;
 use interface::{self, GameState};
 use font::{self, Font};
 
-const SCALE: i32 = 2;
-const WIDTH: int = graphics::WIDTH as int * (SCALE as int);
-const HEIGHT: int = graphics::HEIGHT as int * (SCALE as int);
+const EMU_SCALE: i32 = 3;
+const EMU_WIDTH: i32 = graphics::WIDTH as i32 * EMU_SCALE;
+const EMU_HEIGHT: i32 = graphics::HEIGHT as i32 * EMU_SCALE;
+
+const CHAT_WIDTH: i32 = 250;
+const FONT_SCALE: i32 = 1;
 
 enum KeyboardTarget {
     Emulator,
@@ -42,20 +45,25 @@ enum KeyState {
 pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> SdlResult<()>
     where F: FnMut(&mut Cpu, &mut Memory)
 {
+    const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
+    const BLACK: Color = Color::RGB(0x00, 0x00, 0x00);
+
     sdl2::init(sdl2::INIT_EVERYTHING);
 
-    let window = try!(Window::new("Pikemon", PosCentered, PosCentered, WIDTH, HEIGHT, OPENGL));
+    let window = try!(Window::new("Pikemon", PosCentered, PosCentered,
+        (EMU_WIDTH + CHAT_WIDTH) as int, EMU_HEIGHT as int, OPENGL));
     let renderer = try!(Renderer::from_window(window, RenderDriverIndex::Auto,
         render::ACCELERATED));
 
     let player_texture = try!(interface::extract_player_texture(&renderer, &mut emulator.mem));
     try!(player_texture.set_blend_mode(BlendMode::Blend));
-    let player_sprite = Sprite::new(player_texture, 16, 16, SCALE as i32);
+    let player_sprite = Sprite::new(player_texture, 16, 16, EMU_SCALE);
 
     let font_texture = try!(interface::extract_font_texture(&renderer, &mut emulator.mem));
-    let font_data = Font::new(font_texture, 8, 8);
+    let font_data = Font::new(font_texture, 8, 8, FONT_SCALE);
 
-    let screen_texture = try!(renderer.create_texture(PixelFormatFlag::ARGB8888,
+    let emu_dest_rect = Rect::new(0, 0, EMU_WIDTH, EMU_HEIGHT);
+    let emu_texture = try!(renderer.create_texture(PixelFormatFlag::ARGB8888,
         TextureAccess::Streaming, graphics::WIDTH as int, graphics::HEIGHT as int));
 
     let mut keyboard_target = KeyboardTarget::Emulator;
@@ -126,17 +134,18 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
         // If there is a new screen ready, copy the internal framebuffer to the screen texture
         if emulator.poll_screen() {
-            try!(screen_texture.with_lock(None, |mut pixels, _| {
+            try!(emu_texture.with_lock(None, |mut pixels, _| {
                 copy_memory(pixels.as_mut_slice(), emulator.front_buffer());
             }));
         }
 
+        try!(renderer.set_draw_color(WHITE));
         try!(renderer.clear());
 
         // Draw the screen
-        try!(renderer.copy(&screen_texture, None, None));
+        try!(renderer.copy(&emu_texture, None, Some(emu_dest_rect)));
 
-        try!(data.chat_box.draw(&renderer, &font_data, Rect::new(0, 0, 200, 400)));
+        try!(data.chat_box.draw(&renderer, &font_data, Rect::new(EMU_WIDTH, 0, CHAT_WIDTH, 800)));
 
         // Draw the players
         let self_data = data.last_state;
@@ -145,7 +154,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
                 let (x, y) = get_player_draw_position(&self_data, player);
                 let (frame, flip) = determine_frame_index_and_flip(player.direction,
                     player.walk_counter);
-                try!(player_sprite.draw(&renderer, x * SCALE, y * SCALE, frame, flip));
+                try!(player_sprite.draw(&renderer, x * EMU_SCALE, y * EMU_SCALE, frame, flip));
             }
         }
 

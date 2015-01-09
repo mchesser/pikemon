@@ -344,7 +344,11 @@ pub fn extract_player_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Te
 }
 
 pub fn extract_font_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Texture> {
-    extract_1bpp_texture(renderer, mem, offsets::FONT_BANK, offsets::FONT_ADDR, 8 * 16 * 8, 8)
+    const BLACK: [u8; 4] = [0, 0, 0, 255];
+    const WHITE: [u8; 4] = [255, 255, 255, 255];
+
+    extract_1bpp_texture(renderer, mem, offsets::FONT_BANK, offsets::FONT_ADDR, 8 * 16 * 8, 8,
+        [BLACK, WHITE])
 }
 
 const RMASK: u32 = 0x000000FF;
@@ -354,7 +358,6 @@ const AMASK: u32 = 0xFF000000;
 
 const TILE_SIZE: uint = 8;
 const BYTES_PER_PIXEL: uint = 4;
-
 
 pub fn extract_2bpp_sprite_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr: u16,
     width: uint, height: uint) -> SdlResult<Texture>
@@ -406,7 +409,7 @@ pub fn extract_2bpp_sprite_texture(renderer: &Renderer, mem: &Memory, bank: uint
 }
 
 pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr: u16, width: uint,
-    height: uint) -> SdlResult<Texture>
+    height: uint, colors: [[u8; 4]; 2]) -> SdlResult<Texture>
 {
     const TILE_SIZE: uint = 8;
     let num_x_tiles = width / TILE_SIZE;
@@ -428,16 +431,16 @@ pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr:
                     ((tile_y * TILE_SIZE) + y) * width) * BYTES_PER_PIXEL;
 
                 if color_row & 1 << (8 - x) != 0 {
-                    output_buffer[offset + 0] = 0;
-                    output_buffer[offset + 1] = 0;
-                    output_buffer[offset + 2] = 0;
-                    output_buffer[offset + 3] = 255;
+                    output_buffer[offset + 0] = colors[0][0];
+                    output_buffer[offset + 1] = colors[0][1];
+                    output_buffer[offset + 2] = colors[0][2];
+                    output_buffer[offset + 3] = colors[0][3];
                 }
                 else {
-                    output_buffer[offset + 0] = 255;
-                    output_buffer[offset + 1] = 255;
-                    output_buffer[offset + 2] = 255;
-                    output_buffer[offset + 3] = 255;
+                    output_buffer[offset + 0] = colors[1][0];
+                    output_buffer[offset + 1] = colors[1][1];
+                    output_buffer[offset + 2] = colors[1][2];
+                    output_buffer[offset + 3] = colors[1][3];
                 }
             }
         }

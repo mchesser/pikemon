@@ -52,20 +52,30 @@ pub struct Font {
     texture: Texture,
     char_height: i32,
     char_width: i32,
+    scale: i32,
 }
 impl Font {
-    pub fn new(texture: Texture, char_height: i32, char_width: i32) -> Font {
+    pub fn new(texture: Texture, char_height: i32, char_width: i32, scale: i32) -> Font {
         Font {
             texture: texture,
             char_height: char_height,
             char_width: char_width,
+            scale: scale,
         }
+    }
+
+    pub fn line_height(&self) -> i32 {
+        self.char_height * self.scale
+    }
+
+    pub fn char_width(&self) -> i32 {
+        self.char_width * self.scale
     }
 
     fn draw_char(&self, renderer: &Renderer, value: u8, x: i32, y: i32) -> SdlResult<()> {
         let offset = value as i32 * self.char_width;
         let source_rect = Rect::new(offset, 0, self.char_width, self.char_height);
-        let dest_rect = Rect::new(x, y, self.char_width, self.char_height);
+        let dest_rect = Rect::new(x, y, self.char_width(), self.line_height());
 
         renderer.copy_ex(&self.texture, Some(source_rect), Some(dest_rect), 0.0, None,
             RendererFlip::None)
@@ -83,30 +93,30 @@ impl Font {
 
         for &character in string.iter() {
             match character {
-                special::SPACE => x += self.char_width,
+                special::SPACE => x += self.char_width(),
                 special::NEW_LINE => {
-                    x = 0;
-                    y += self.char_height;
+                    x = start_x;
+                    y += self.line_height();
                 },
                 special::NONE => {},
-                special::TAB => x += TAB_SIZE * self.char_width,
+                special::TAB => x += TAB_SIZE * self.char_width(),
 
                 normal => {
                     try!(self.draw_char(renderer, normal, x, y));
-                    x += self.char_width;
+                    x += self.char_width();
                 },
             }
 
             // Check for wrapping
             if let Some(max_width) = wrap_width {
-                if x + self.char_width > max_width {
-                    x = 0;
-                    y += self.char_height;
+                if x - start_x + self.char_width() > max_width {
+                    x = start_x;
+                    y += self.line_height();
                 }
             }
         }
 
-        Ok(y - start_y + self.char_height)
+        Ok(y - start_y + self.line_height())
     }
 }
 

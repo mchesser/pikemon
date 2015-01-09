@@ -127,9 +127,10 @@ impl<'a> ClientDataManager<'a> {
                     self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
                 },
 
-                Ok(NetworkEvent::Chat(_, message)) => {
+                Ok(NetworkEvent::Chat(id, message)) => {
                     println!("Chat: {}", message);
-                    self.chat_box.add_message(&*message);
+                    let id_string = format!("NAME[{}]:", id);
+                    self.chat_box.add_message(&*id_string, &*message);
                 },
 
                 Ok(_) => unimplemented!(),
