@@ -8,7 +8,9 @@ use rustc_serialize::json;
 use common::{NetworkEvent, PlayerData, PlayerId};
 use common::error::{NetworkError, NetworkResult};
 use common::data::Party;
+
 use interface::{self, GameData, NetworkRequest, GameState};
+use chat::ChatBox;
 use gb_emu::mmu::Memory;
 
 pub struct NetworkManager {
@@ -31,7 +33,6 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
         loop {
             match receiver_socket.read_line() {
                 Ok(data) => {
-                    //println!("{}", data);
                     let packet = json::decode(&*data).unwrap();
                     global_update_sender.send(packet);
                 },
@@ -66,6 +67,7 @@ pub struct ClientDataManager<'a> {
     pub new_update: bool,
     pub local_update_sender: Sender<NetworkEvent>,
     pub global_update_receiver: Receiver<NetworkEvent>,
+    pub chat_box: ChatBox,
 }
 
 impl<'a> ClientDataManager<'a> {
@@ -90,6 +92,11 @@ impl<'a> ClientDataManager<'a> {
             },
         }
         self.game_data.borrow_mut().network_request = NetworkRequest::None;
+    }
+
+    pub fn send_message(&mut self) {
+        self.local_update_sender.send(NetworkEvent::Chat(self.id,
+            self.chat_box.get_message_buffer()));
     }
 
     pub fn recv_update(&mut self, mem: &mut Memory) {
@@ -118,6 +125,11 @@ impl<'a> ClientDataManager<'a> {
                 Ok(NetworkEvent::UpdateRequest) => {
                     println!("Responding to update request");
                     self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
+                },
+
+                Ok(NetworkEvent::Chat(_, message)) => {
+                    println!("Chat: {}", message);
+                    self.chat_box.add_message(&*message);
                 },
 
                 Ok(_) => unimplemented!(),

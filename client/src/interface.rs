@@ -1,5 +1,6 @@
 //! Module for interfacing with the emulator
 use std::collections::HashMap;
+use std::iter;
 
 use sdl2::SdlResult;
 use sdl2::surface::Surface;
@@ -29,6 +30,10 @@ mod offsets {
     // The address of the player spritesheet encoded as 2bpp in the rom
     pub const PLAYER_SPRITE_ADDR: u16 = 0x4180;
     pub const PLAYER_SPRITE_BANK: uint = 5;
+
+    // The address of the main font encoded as 2bpp in the rom
+    pub const FONT_ADDR: u16 = 0x5A80;
+    pub const FONT_BANK: uint = 4;
 
     // Useful addresses for hacks
     pub const LOADED_ROM_BANK: u16 = 0xFFB8;
@@ -334,26 +339,42 @@ pub fn extract_player_party(mem: &Memory) -> Party {
 }
 
 pub fn extract_player_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Texture> {
-    const SPRITESHEET_WIDTH: uint = 16;
-    const SPRITESHEET_HEIGHT: uint = 16 * 6;
+    extract_2bpp_sprite_texture(renderer, mem, offsets::PLAYER_SPRITE_BANK,
+        offsets::PLAYER_SPRITE_ADDR, 16, 16 * 6)
+}
 
-    const TILE_SIZE: uint = 8;
-    const NUM_X_TILES: uint = SPRITESHEET_WIDTH / TILE_SIZE;
-    const NUM_Y_TILES: uint = SPRITESHEET_HEIGHT / TILE_SIZE;
+pub fn extract_font_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Texture> {
+    extract_1bpp_texture(renderer, mem, offsets::FONT_BANK, offsets::FONT_ADDR, 8 * 16 * 8, 8)
+}
+
+const RMASK: u32 = 0x000000FF;
+const GMASK: u32 = 0x0000FF00;
+const BMASK: u32 = 0x00FF0000;
+const AMASK: u32 = 0xFF000000;
+
+const TILE_SIZE: uint = 8;
+const BYTES_PER_PIXEL: uint = 4;
+
+
+pub fn extract_2bpp_sprite_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr: u16,
+    width: uint, height: uint) -> SdlResult<Texture>
+{
+    let num_x_tiles = width / TILE_SIZE;
+    let num_y_tiles = height / TILE_SIZE;
 
     const BYTES_PER_PIXEL: uint = 4;
-    const BUFFER_SIZE: uint = SPRITESHEET_WIDTH * SPRITESHEET_HEIGHT * BYTES_PER_PIXEL;
+    let buffer_size = width * height * BYTES_PER_PIXEL;
 
-    let mut output_buffer = [0; BUFFER_SIZE];
-    let mut sprite_offset = (offsets::PLAYER_SPRITE_ADDR & 0x3FFF) as uint;
+    let mut output_buffer: Vec<_> = iter::repeat(0).take(buffer_size).collect();
+    let mut sprite_offset = (addr & 0x3FFF) as uint;
 
     let (mut tile_x, mut tile_y) = (0, 0);
-    while tile_y < NUM_Y_TILES {
+    while tile_y < num_y_tiles {
         for y in 0..8 {
             // Colors stored in the 2bpp format are split over two bytes. The color's lower bit is
             // stored in the first byte and the high bit is stored in the second byte.
-            let color_low = mem.cart.rom[offsets::PLAYER_SPRITE_BANK][sprite_offset];
-            let color_high = mem.cart.rom[offsets::PLAYER_SPRITE_BANK][sprite_offset + 1];
+            let color_low = mem.cart.rom[bank][sprite_offset];
+            let color_high = mem.cart.rom[bank][sprite_offset + 1];
             sprite_offset += 2;
 
             for x in 0..8 {
@@ -361,8 +382,8 @@ pub fn extract_player_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Te
                 let color = graphics::palette_lookup(208, color_id);
 
                 // Compute the offset of where to place this pixel in the output buffer
-                let offset = ((((1 - tile_x) * TILE_SIZE) + x) +
-                    ((tile_y * TILE_SIZE) + y) * SPRITESHEET_WIDTH) * BYTES_PER_PIXEL;
+                let offset = ((((num_x_tiles - tile_x - 1) * TILE_SIZE) + x) +
+                    ((tile_y * TILE_SIZE) + y) * width) * BYTES_PER_PIXEL;
 
                 output_buffer[offset + 0] = color[0];
                 output_buffer[offset + 1] = color[1];
@@ -373,19 +394,63 @@ pub fn extract_player_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Te
 
         // Step to the next tile
         tile_x += 1;
-        if tile_x >= NUM_X_TILES {
+        if tile_x >= num_x_tiles {
             tile_x = 0;
             tile_y += 1;
         }
     }
 
-    const RMASK: u32 = 0x000000FF;
-    const GMASK: u32 = 0x0000FF00;
-    const BMASK: u32 = 0x00FF0000;
-    const AMASK: u32 = 0xFF000000;
+    let surface = try!(Surface::from_data(&mut *output_buffer, width as int,
+        height as int, 32, (width * BYTES_PER_PIXEL) as int, RMASK, GMASK, BMASK, AMASK));
+    renderer.create_texture_from_surface(&surface)
+}
 
-    let surface = try!(Surface::from_data(&mut output_buffer, SPRITESHEET_WIDTH as int,
-        SPRITESHEET_HEIGHT as int, 32, (SPRITESHEET_WIDTH * BYTES_PER_PIXEL) as int, RMASK, GMASK,
-        BMASK, AMASK));
+pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr: u16, width: uint,
+    height: uint) -> SdlResult<Texture>
+{
+    const TILE_SIZE: uint = 8;
+    let num_x_tiles = width / TILE_SIZE;
+    let num_y_tiles = height / TILE_SIZE;
+    let buffer_size = width * height * BYTES_PER_PIXEL;
+
+    let mut output_buffer: Vec<_> = iter::repeat(0).take(buffer_size).collect();
+    let mut sprite_offset = (addr & 0x3FFF) as uint;
+
+    let (mut tile_x, mut tile_y) = (0, 0);
+    while tile_y < num_y_tiles {
+        for y in 0..8 {
+            let color_row = mem.cart.rom[bank][sprite_offset];
+            sprite_offset += 1;
+
+            for x in 0..8 {
+                // Compute the offset of where to place this pixel in the output buffer
+                let offset = (((tile_x * TILE_SIZE) + x) +
+                    ((tile_y * TILE_SIZE) + y) * width) * BYTES_PER_PIXEL;
+
+                if color_row & 1 << (8 - x) != 0 {
+                    output_buffer[offset + 0] = 0;
+                    output_buffer[offset + 1] = 0;
+                    output_buffer[offset + 2] = 0;
+                    output_buffer[offset + 3] = 255;
+                }
+                else {
+                    output_buffer[offset + 0] = 255;
+                    output_buffer[offset + 1] = 255;
+                    output_buffer[offset + 2] = 255;
+                    output_buffer[offset + 3] = 255;
+                }
+            }
+        }
+
+        // Step to the next tile
+        tile_x += 1;
+        if tile_x >= num_x_tiles {
+            tile_x = 0;
+            tile_y += 1;
+        }
+    }
+
+    let surface = try!(Surface::from_data(&mut *output_buffer, width as int,
+        height as int, 32, (width * BYTES_PER_PIXEL) as int, RMASK, GMASK, BMASK, AMASK));
     renderer.create_texture_from_surface(&surface)
 }

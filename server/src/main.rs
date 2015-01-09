@@ -50,12 +50,15 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                         }
                     },
 
-                    NetworkEvent::BattleDataRequest(to, _) => {
+                    NetworkEvent::BattleDataRequest(to, _) |
+                    NetworkEvent::BattleDataResponse(to, _) => {
                         try!(send_to_client(&mut clients[to], &message))
                     },
 
-                    NetworkEvent::BattleDataResponse(to, _) => {
-                        try!(send_to_client(&mut clients[to], &message))
+                    NetworkEvent::Chat(_, _) => {
+                        for (_, client_stream) in clients.iter_mut() {
+                            try!(send_to_client(client_stream, &message));
+                        }
                     },
 
                     _ => unimplemented!(),

@@ -25,6 +25,8 @@ mod client;
 mod timer;
 mod net;
 mod sprite;
+mod font;
+mod chat;
 mod interface;
 mod save;
 
@@ -62,6 +64,7 @@ fn main() {
         new_update: false,
         local_update_sender: local_update_sender,
         global_update_receiver: global_update_receiver,
+        chat_box: chat::ChatBox::new(),
     };
 
     if let Err(e) = client::run(client_data_manager, emulator) {
