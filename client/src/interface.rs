@@ -159,7 +159,6 @@ pub struct GameData {
     sprite_id_state: DataState,
     text_state: DataState,
     current_message: Vec<u8>,
-    current_battle: Option<Party>,
 }
 
 impl GameData {
@@ -172,7 +171,6 @@ impl GameData {
             sprite_id_state: DataState::Normal,
             text_state: DataState::Normal,
             current_message: Vec::new(),
-            current_battle: None,
         }
     }
 

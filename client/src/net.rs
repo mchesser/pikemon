@@ -7,7 +7,6 @@ use rustc_serialize::json;
 
 use common::{NetworkEvent, PlayerData, PlayerId};
 use common::error::{NetworkError, NetworkResult};
-use common::data::Party;
 
 use interface::{self, GameData, NetworkRequest, GameState};
 use chat::ChatBox;
@@ -34,7 +33,8 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
             match receiver_socket.read_line() {
                 Ok(data) => {
                     let packet = json::decode(&*data).unwrap();
-                    global_update_sender.send(packet);
+                    // TODO: better error handling
+                    let _ = global_update_sender.send(packet);
                 },
 
                 Err(e) => {
@@ -80,7 +80,8 @@ impl<'a> ClientDataManager<'a> {
 
     pub fn send_update(&mut self) {
         if self.new_update {
-            self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
+            // TODO: Better error handling
+            let _ = self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
             self.new_update = false;
         }
 
@@ -88,14 +89,16 @@ impl<'a> ClientDataManager<'a> {
             NetworkRequest::None => {},
             NetworkRequest::Battle(id) => {
                 println!("Requesting battle");
-                self.local_update_sender.send(NetworkEvent::BattleDataRequest(id, self.id));
+                // TODO: Better error handling
+                let _ = self.local_update_sender.send(NetworkEvent::BattleDataRequest(id, self.id));
             },
         }
         self.game_data.borrow_mut().network_request = NetworkRequest::None;
     }
 
     pub fn send_message(&mut self) {
-        self.local_update_sender.send(NetworkEvent::Chat(self.id,
+        // TODO: Better error handling
+        let _ = self.local_update_sender.send(NetworkEvent::Chat(self.id,
             self.chat_box.get_message_buffer()));
     }
 
@@ -114,7 +117,8 @@ impl<'a> ClientDataManager<'a> {
                 Ok(NetworkEvent::BattleDataRequest(_, id)) => {
                     println!("Responding to battle request");
                     let party = interface::extract_player_party(mem);
-                    self.local_update_sender.send(NetworkEvent::BattleDataResponse(id, party));
+                    let _ = self.local_update_sender.send(NetworkEvent::BattleDataResponse(id,
+                        party));
                 },
 
                 Ok(NetworkEvent::BattleDataResponse(_, party)) => {
@@ -124,7 +128,9 @@ impl<'a> ClientDataManager<'a> {
 
                 Ok(NetworkEvent::UpdateRequest) => {
                     println!("Responding to update request");
-                    self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
+                    // TODO: Better error handling
+                    let _ = self.local_update_sender.send(NetworkEvent::Update(self.id,
+                    self.last_state));
                 },
 
                 Ok(NetworkEvent::Chat(id, message)) => {

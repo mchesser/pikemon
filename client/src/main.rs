@@ -6,16 +6,12 @@ extern crate sdl2;
 extern crate gb_emu;
 
 use std::cell::RefCell;
-use std::io::{File, TcpStream, BufferedReader};
-use std::thread::Thread;
+use std::io::{File, TcpStream};
 use std::sync::mpsc::channel;
-
-use rustc_serialize::json;
 
 use gb_emu::emulator::Emulator;
 use gb_emu::cart;
-use common::{NetworkEvent, PlayerData, PlayerId};
-use common::error::{NetworkError, NetworkResult};
+use common::PlayerData;
 
 use interface::GameData;
 use net::{NetworkManager, ClientDataManager};

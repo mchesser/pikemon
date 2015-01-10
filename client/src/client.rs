@@ -22,7 +22,7 @@ use timer::Timer;
 use net::ClientDataManager;
 use sprite::Sprite;
 use interface::{self, GameState};
-use font::{self, Font};
+use font::Font;
 
 const EMU_SCALE: i32 = 3;
 const EMU_WIDTH: i32 = graphics::WIDTH as i32 * EMU_SCALE;
@@ -37,16 +37,10 @@ enum KeyboardTarget {
     Menu,
 }
 
-enum KeyState {
-    Up,
-    Down,
-}
-
 pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> SdlResult<()>
     where F: FnMut(&mut Cpu, &mut Memory)
 {
     const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
-    const BLACK: Color = Color::RGB(0x00, 0x00, 0x00);
 
     sdl2::init(sdl2::INIT_EVERYTHING);
 
