@@ -18,7 +18,7 @@ pub enum NetworkEvent {
     ServerFailure,
 }
 
-#[derive(Copy, Clone, Show, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Show, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct PlayerData {
     pub map_id: u8,
     pub map_x: u8,

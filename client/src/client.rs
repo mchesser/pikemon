@@ -142,10 +142,10 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
         try!(data.chat_box.draw(&renderer, &font_data, Rect::new(EMU_WIDTH, 0, CHAT_WIDTH, 800)));
 
         // Draw the players
-        let self_data = data.last_state;
+        let self_data = &data.last_state;
         for player in data.game_data.borrow().other_players.values() {
             if player.map_id == self_data.map_id {
-                let (x, y) = get_player_draw_position(&self_data, player);
+                let (x, y) = get_player_draw_position(self_data, player);
                 let (frame, flip) = determine_frame_index_and_flip(player.direction,
                     player.walk_counter);
                 try!(player_sprite.draw(&renderer, x * EMU_SCALE, y * EMU_SCALE, frame, flip));

@@ -81,7 +81,8 @@ impl<'a> ClientDataManager<'a> {
     pub fn send_update(&mut self) {
         if self.new_update {
             // TODO: Better error handling
-            let _ = self.local_update_sender.send(NetworkEvent::Update(self.id, self.last_state));
+            let update_data = self.last_state.clone();
+            let _ = self.local_update_sender.send(NetworkEvent::Update(self.id, update_data));
             self.new_update = false;
         }
 
@@ -129,8 +130,9 @@ impl<'a> ClientDataManager<'a> {
                 Ok(NetworkEvent::UpdateRequest) => {
                     println!("Responding to update request");
                     // TODO: Better error handling
+                    let update_data = self.last_state.clone();
                     let _ = self.local_update_sender.send(NetworkEvent::Update(self.id,
-                    self.last_state));
+                        update_data));
                 },
 
                 Ok(NetworkEvent::Chat(id, message)) => {
