@@ -10,7 +10,7 @@ use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
-use common::{PlayerData, PlayerId};
+use common::{PlayerData, MovementData, PlayerId};
 use common::data::{self, Party, PokemonData};
 
 mod offsets {
@@ -226,7 +226,7 @@ pub fn sprite_check_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
 
         // Check if there are any other players that occupy this tile
         for (id, player) in game_data.other_players.iter() {
-            if player.map_id == map_id && player.check_collision(x, y) {
+            if player.movement_data.map_id == map_id && player.check_collision(x, y) {
                 // If there was a player set a sentinel value so the game thinks that there is
                 // something in the way.
                 mem.sb(offsets::SPRITE_INDEX, 0xFF);
@@ -284,8 +284,8 @@ pub fn set_battle(mem: &mut Memory, party: Party) {
     load_party(party, mem);
 }
 
-pub fn extract_player_data(mem: &Memory) -> PlayerData {
-    PlayerData {
+fn extract_movement_data(mem: &Memory) -> MovementData {
+    MovementData {
         map_id: mem.lb(offsets::MAP_ID),
         map_x: mem.lb(offsets::MAP_X),
         map_y: mem.lb(offsets::MAP_Y),
@@ -294,7 +294,25 @@ pub fn extract_player_data(mem: &Memory) -> PlayerData {
     }
 }
 
-pub fn extract_pokemon(mem: &Memory, addr: u16) -> PokemonData {
+pub fn extract_player_data(mem: &Memory) -> PlayerData {
+    let mut name = vec![];
+
+    // TODO: Load player name from memory
+    // let mut offset = offsets::PLAYER_NAME_START;
+    // loop {
+    //     match mem.lb(offset) {
+    //         values::END_CHAR => break,
+    //         val => name.push(val),
+    //     }
+    // }
+
+    PlayerData {
+        name: name,
+        movement_data: extract_movement_data(mem),
+    }
+}
+
+fn extract_pokemon(mem: &Memory, addr: u16) -> PokemonData {
     PokemonData {
         species: mem.lb(addr+0),
         hp: mem.lw(addr+1),

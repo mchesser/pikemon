@@ -8,7 +8,8 @@ pub type PlayerId = u32;
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum NetworkEvent {
-    Update(PlayerId, PlayerData),
+    FullUpdate(PlayerId, PlayerData),
+    MovementUpdate(PlayerId, MovementData),
     UpdateRequest,
     PlayerJoin(PlayerId),
     PlayerQuit(PlayerId),
@@ -20,6 +21,32 @@ pub enum NetworkEvent {
 
 #[derive(Clone, Show, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct PlayerData {
+    pub name: Vec<u8>,
+    pub movement_data: MovementData,
+}
+
+impl PlayerData {
+    pub fn new() -> PlayerData {
+        PlayerData {
+            name: vec![],
+            movement_data: MovementData::new(),
+        }
+    }
+
+    /// Check if this player is occupying a particular tile
+    pub fn check_collision(&self, x: u8, y: u8) -> bool {
+        (x, y) == (self.movement_data.map_x, self.movement_data.map_y) ||
+            (x, y) == self.movement_data.move_target()
+    }
+
+    /// Check if one player is visible to another player
+    pub fn is_visible_to(&self, other: &PlayerData) -> bool {
+        self.movement_data.map_id == other.movement_data.map_id
+    }
+}
+
+#[derive(Copy, Clone, Show, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct MovementData {
     pub map_id: u8,
     pub map_x: u8,
     pub map_y: u8,
@@ -27,9 +54,9 @@ pub struct PlayerData {
     pub walk_counter: u8,
 }
 
-impl PlayerData {
-    pub fn new() -> PlayerData {
-        PlayerData {
+impl MovementData {
+    pub fn new() -> MovementData {
+        MovementData {
             map_id: 0,
             map_x: 0,
             map_y: 0,
@@ -38,22 +65,19 @@ impl PlayerData {
         }
     }
 
-    /// Check if this player is occupying a particular tile
-    pub fn check_collision(&self, x: u8, y: u8) -> bool {
-        if self.map_x == x && self.map_y == y {
-            return true;
-        }
-
+    /// Returns the tile that the player is currently moving towards
+    pub fn move_target(&self) -> (u8, u8) {
         if self.walk_counter != 0 {
-            return (x, y) == match self.direction {
+            match self.direction {
                 0  => (self.map_x, self.map_y + 1),
                 4  => (self.map_x, self.map_y - 1),
                 8  => (self.map_x - 1, self.map_y),
                 12 => (self.map_x + 1, self.map_y),
-                _  => return false
-            };
+                _  => (self.map_x, self.map_y),
+            }
         }
-
-        false
+        else {
+            (self.map_x, self.map_y)
+        }
     }
 }

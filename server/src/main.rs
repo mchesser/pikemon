@@ -34,7 +34,8 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
             player_packet = packet_receiver.recv() => {
                 let message = try!(player_packet);
                 match message {
-                    NetworkEvent::Update(sender_id, _) => {
+                    NetworkEvent::FullUpdate(sender_id, _) |
+                    NetworkEvent::MovementUpdate(sender_id, _) => {
                         for (&client_id, client_stream) in clients.iter_mut() {
                             if client_id != sender_id {
                                 try!(send_to_client(client_stream, &message));

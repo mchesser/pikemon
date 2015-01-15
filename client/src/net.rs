@@ -82,7 +82,7 @@ impl<'a> ClientDataManager<'a> {
         if self.new_update {
             // TODO: Better error handling
             let update_data = self.last_state.clone();
-            let _ = self.local_update_sender.send(NetworkEvent::Update(self.id, update_data));
+            let _ = self.local_update_sender.send(NetworkEvent::FullUpdate(self.id, update_data));
             self.new_update = false;
         }
 
@@ -106,8 +106,14 @@ impl<'a> ClientDataManager<'a> {
     pub fn recv_update(&mut self, mem: &mut Memory) {
         loop {
             match self.global_update_receiver.try_recv() {
-                Ok(NetworkEvent::Update(id, data)) => {
+                Ok(NetworkEvent::FullUpdate(id, data)) => {
                     self.game_data.borrow_mut().other_players.insert(id, data);
+                },
+
+                Ok(NetworkEvent::MovementUpdate(id, data)) => {
+                    if let Some(player) = self.game_data.borrow_mut().other_players.get_mut(&id) {
+                        player.movement_data = data;
+                    }
                 },
 
                 Ok(NetworkEvent::PlayerQuit(id)) => {
@@ -131,7 +137,7 @@ impl<'a> ClientDataManager<'a> {
                     println!("Responding to update request");
                     // TODO: Better error handling
                     let update_data = self.last_state.clone();
-                    let _ = self.local_update_sender.send(NetworkEvent::Update(self.id,
+                    let _ = self.local_update_sender.send(NetworkEvent::FullUpdate(self.id,
                         update_data));
                 },
 

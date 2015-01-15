@@ -144,10 +144,10 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
         // Draw the players
         let self_data = &data.last_state;
         for player in data.game_data.borrow().other_players.values() {
-            if player.map_id == self_data.map_id {
+            if player.is_visible_to(self_data) {
                 let (x, y) = get_player_draw_position(self_data, player);
-                let (frame, flip) = determine_frame_index_and_flip(player.direction,
-                    player.walk_counter);
+                let (frame, flip) = determine_frame_index_and_flip(player.movement_data.direction,
+                    player.movement_data.walk_counter);
                 try!(player_sprite.draw(&renderer, x * EMU_SCALE, y * EMU_SCALE, frame, flip));
             }
         }
@@ -168,16 +168,17 @@ fn get_player_draw_position(self_player: &PlayerData, other_player: &PlayerData)
 }
 
 fn get_player_position(player: &PlayerData) -> (i32, i32) {
-    let x = player.map_x as i32 * 16;
-    let y = player.map_y as i32 * 16;
+    let x = player.movement_data.map_x as i32 * 16;
+    let y = player.movement_data.map_y as i32 * 16;
 
     // Determine the offset of the player between tiles:
     // When a player begins walking, the walk counter is set to 8. For each step the walk counter
     // decreases by one, and the player is moved by two pixels, until the walk counter is 0. When
     // we reach this point, the players map coordinate updated.
-    let offset = if player.walk_counter == 0 { 0 } else { (8 - player.walk_counter) * 2 } as i32;
+    let ticks = player.movement_data.walk_counter;
+    let offset = if ticks == 0 { 0 } else { (8 - ticks) * 2 } as i32;
 
-    match player.direction {
+    match player.movement_data.direction {
         0  => (x, y + offset),
         4  => (x, y - offset),
         8  => (x - offset, y),
