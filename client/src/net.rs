@@ -43,7 +43,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
                 },
             }
         }
-    }).detach();
+    });
 
     let local_update_receiver = network_manager.local_update_receiver;
     let mut sender_socket = network_manager.socket;
@@ -55,7 +55,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
             let _ = sender_socket.write_str(&*packet);
             let _ = sender_socket.write_char('\n');
         }
-    }).detach();
+    });
 
     Ok(player_id)
 }

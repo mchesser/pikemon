@@ -45,7 +45,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
     sdl2::init(sdl2::INIT_EVERYTHING);
 
     let window = try!(Window::new("Pikemon", PosCentered, PosCentered,
-        (EMU_WIDTH + CHAT_WIDTH) as int, EMU_HEIGHT as int, OPENGL));
+        (EMU_WIDTH + CHAT_WIDTH) as isize, EMU_HEIGHT as isize, OPENGL));
     let renderer = try!(Renderer::from_window(window, RenderDriverIndex::Auto,
         render::ACCELERATED));
 
@@ -58,7 +58,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
     let emu_dest_rect = Rect::new(0, 0, EMU_WIDTH, EMU_HEIGHT);
     let emu_texture = try!(renderer.create_texture(PixelFormatFlag::ARGB8888,
-        TextureAccess::Streaming, graphics::WIDTH as int, graphics::HEIGHT as int));
+        TextureAccess::Streaming, graphics::WIDTH as isize, graphics::HEIGHT as isize));
 
     let mut keyboard_target = KeyboardTarget::Emulator;
     let mut fast_mode = false;

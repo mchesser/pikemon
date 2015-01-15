@@ -29,11 +29,11 @@ mod offsets {
 
     // The address of the player spritesheet encoded as 2bpp in the rom
     pub const PLAYER_SPRITE_ADDR: u16 = 0x4180;
-    pub const PLAYER_SPRITE_BANK: uint = 5;
+    pub const PLAYER_SPRITE_BANK: usize = 5;
 
     // The address of the main font encoded as 2bpp in the rom
     pub const FONT_ADDR: u16 = 0x5A80;
-    pub const FONT_BANK: uint = 4;
+    pub const FONT_BANK: usize = 4;
 
     // Useful addresses for hacks
     pub const LOADED_ROM_BANK: u16 = 0xFFB8;
@@ -70,7 +70,7 @@ mod offsets {
     // The Prof. Oak battle is unused by the game, so it is a convenient place to replace with our
     // battle data.
     pub const PROF_OAK_DATA_ADDR: u16 = 0x621D;
-    pub const PROF_OAK_DATA_BANK: uint = 0xE;
+    pub const PROF_OAK_DATA_BANK: usize = 0xE;
 
     // Addresses for party data
     pub const PARTY_COUNT: u16 = 0xD163;
@@ -120,12 +120,12 @@ fn load_party(party: data::Party, mem: &mut Memory) {
     let pokemon = party.pokemon;
     let pokemon_array = [pokemon.0, pokemon.1, pokemon.2, pokemon.3, pokemon.4, pokemon.5];
 
-    let mut addr = (offsets::PROF_OAK_DATA_ADDR & 0x3FFF) as uint;
+    let mut addr = (offsets::PROF_OAK_DATA_ADDR & 0x3FFF) as usize;
     let bank = offsets::PROF_OAK_DATA_BANK;
 
     mem.cart.rom[bank][addr] = 0xFF;
     addr += 1;
-    for mon in pokemon_array.iter().take(party.num_pokemon as uint) {
+    for mon in pokemon_array.iter().take(party.num_pokemon as usize) {
         mem.cart.rom[bank][addr] = mon.level;
         mem.cart.rom[bank][addr + 1] = mon.species;
         addr += 2;
@@ -372,20 +372,20 @@ const GMASK: u32 = 0x0000FF00;
 const BMASK: u32 = 0x00FF0000;
 const AMASK: u32 = 0xFF000000;
 
-const TILE_SIZE: uint = 8;
-const BYTES_PER_PIXEL: uint = 4;
+const TILE_SIZE: usize = 8;
+const BYTES_PER_PIXEL: usize = 4;
 
-pub fn extract_2bpp_sprite_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr: u16,
-    width: uint, height: uint) -> SdlResult<Texture>
+pub fn extract_2bpp_sprite_texture(renderer: &Renderer, mem: &Memory, bank: usize, addr: u16,
+    width: usize, height: usize) -> SdlResult<Texture>
 {
     let num_x_tiles = width / TILE_SIZE;
     let num_y_tiles = height / TILE_SIZE;
 
-    const BYTES_PER_PIXEL: uint = 4;
+    const BYTES_PER_PIXEL: usize = 4;
     let buffer_size = width * height * BYTES_PER_PIXEL;
 
     let mut output_buffer: Vec<_> = iter::repeat(0).take(buffer_size).collect();
-    let mut sprite_offset = (addr & 0x3FFF) as uint;
+    let mut sprite_offset = (addr & 0x3FFF) as usize;
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_y < num_y_tiles {
@@ -419,21 +419,21 @@ pub fn extract_2bpp_sprite_texture(renderer: &Renderer, mem: &Memory, bank: uint
         }
     }
 
-    let surface = try!(Surface::from_data(&mut *output_buffer, width as int,
-        height as int, 32, (width * BYTES_PER_PIXEL) as int, RMASK, GMASK, BMASK, AMASK));
+    let surface = try!(Surface::from_data(&mut *output_buffer, width as isize,
+        height as isize, 32, (width * BYTES_PER_PIXEL) as isize, RMASK, GMASK, BMASK, AMASK));
     renderer.create_texture_from_surface(&surface)
 }
 
-pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr: u16, width: uint,
-    height: uint, colors: [[u8; 4]; 2]) -> SdlResult<Texture>
+pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: usize, addr: u16, width: usize,
+    height: usize, colors: [[u8; 4]; 2]) -> SdlResult<Texture>
 {
-    const TILE_SIZE: uint = 8;
+    const TILE_SIZE: usize = 8;
     let num_x_tiles = width / TILE_SIZE;
     let num_y_tiles = height / TILE_SIZE;
     let buffer_size = width * height * BYTES_PER_PIXEL;
 
     let mut output_buffer: Vec<_> = iter::repeat(0).take(buffer_size).collect();
-    let mut sprite_offset = (addr & 0x3FFF) as uint;
+    let mut sprite_offset = (addr & 0x3FFF) as usize;
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_y < num_y_tiles {
@@ -469,7 +469,7 @@ pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: uint, addr:
         }
     }
 
-    let surface = try!(Surface::from_data(&mut *output_buffer, width as int,
-        height as int, 32, (width * BYTES_PER_PIXEL) as int, RMASK, GMASK, BMASK, AMASK));
+    let surface = try!(Surface::from_data(&mut *output_buffer, width as isize,
+        height as isize, 32, (width * BYTES_PER_PIXEL) as isize, RMASK, GMASK, BMASK, AMASK));
     renderer.create_texture_from_surface(&surface)
 }

@@ -1,4 +1,4 @@
-#![feature(slicing_syntax)]
+#![feature(slicing_syntax, box_syntax)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
@@ -49,7 +49,7 @@ fn main() {
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
     let save_path = Path::new("Pokemon Red.sav");
 
-    let save_file = box LocalSaveWrapper { path: save_path } as Box<cart::SaveFile>;
+    let save_file = Box::new(LocalSaveWrapper { path: save_path }) as Box<cart::SaveFile>;
     emulator.load_cart(cart.as_slice(), Some(save_file));
     emulator.start();
 

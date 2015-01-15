@@ -1,5 +1,3 @@
-#![feature(old_orphan_check)]
-
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
 
@@ -26,7 +24,9 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
     let (new_client_sender, new_client_receiver) = channel();
     let (packet_sender, packet_receiver) = channel();
 
-    Thread::spawn(move|| acceptor(listener, new_client_sender, packet_sender)).detach();
+    Thread::spawn(move|| {
+        let _ = acceptor(listener, new_client_sender, packet_sender);
+    });
 
     let mut clients: HashMap<PlayerId, TcpStream> = HashMap::new();
     loop {
@@ -106,7 +106,9 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, TcpStream)>,
                 server_sender: server_sender.clone(),
             };
 
-            Thread::spawn(move|| client_handler(client)).detach();
+            Thread::spawn(move|| {
+                let _ = client_handler(client);
+            });
             try!(new_client_sender.send((next_id, stream)));
 
             next_id += 1;
@@ -135,6 +137,6 @@ fn client_handler(client: Client) -> NetworkResult<()> {
 
 fn main() {
     if let Err(e) = run_server("0.0.0.0:8080") {
-        println!("Server failed unexpectedly and had to close.\nReason: {}", e);
+        println!("Server failed unexpectedly and had to close.\nReason: {:?}", e);
     }
 }
