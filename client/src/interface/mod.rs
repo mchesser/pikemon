@@ -1,4 +1,5 @@
 //! Module for interfacing with the emulator
+use std::collections::RingBuf;
 use std::collections::HashMap;
 use std::iter;
 
@@ -13,9 +14,9 @@ use gb_emu::graphics;
 use common::{PlayerData, MovementData, PlayerId};
 use common::data::{self, Party, PokemonData};
 
-
-mod offsets;
-mod values;
+pub mod offsets;
+pub mod values;
+pub mod text;
 
 fn load_party(party: data::Party, mem: &mut Memory) {
     let pokemon = party.pokemon;
@@ -59,7 +60,7 @@ pub struct GameData {
     last_interaction: u32,
     sprite_id_state: DataState,
     text_state: DataState,
-    current_message: Vec<u8>,
+    current_message: RingBuf<u8>,
 }
 
 impl GameData {
@@ -71,37 +72,15 @@ impl GameData {
             last_interaction: 0,
             sprite_id_state: DataState::Normal,
             text_state: DataState::Normal,
-            current_message: Vec::new(),
+            current_message: RingBuf::new(),
         }
     }
 
-    pub fn load_message(&mut self, input: &str) {
-        // The expected format of the text in the game is *not* ascii. Here we convert the input
-        // UTF-8 string into the proper format.
-        // TODO: Clean up and refactor this code
-        self.current_message.push(0x50);
-        self.current_message.push(0x57);
-        for byte in input.bytes().rev() {
-            if 'a' as u8 <= byte && byte <= 'z' as u8 || 'A' as u8 <= byte && byte <= 'Z' as u8 {
-                self.current_message.push(byte + 0x3F);
-            }
-            else if byte == ',' as u8 {
-                self.current_message.push(0xF4);
-            }
-            else if byte == '.' as u8 {
-                self.current_message.push(0xE8);
-            }
-            else if byte == ' ' as u8 {
-                self.current_message.push(0x7F);
-            }
-            else if byte == '\n' as u8 {
-                self.current_message.push(0x4F);
-            }
-            else {
-                panic!("Unsupported character");
-            }
-        }
-        self.current_message.push(0x00);
+    pub fn create_message_box(&mut self, input: &str) {
+        self.current_message.push_back(text::special::TEXT_START);
+        self.current_message.extend(text::Encoder::new(input));
+        self.current_message.push_back(text::special::END_MSG);
+        self.current_message.push_back(text::special::TERMINATOR);
     }
 }
 
@@ -150,7 +129,7 @@ pub fn display_text_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
         mem.sb(offsets::FRAME_COUNTER, 30);
 
         game_data.text_state = DataState::Hacked;
-        game_data.load_message("PLAYER has nothing\nto say.");
+        game_data.create_message_box("PLAYER has nothing\nto say.");
 
         game_data.network_request = NetworkRequest::Battle(game_data.last_interaction);
         // We probably want to defer this until as late as possible, to avoid latency causing too
@@ -163,7 +142,7 @@ pub fn display_text_hack(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameDa
     if game_data.text_state == DataState::Hacked && (cpu.pc == offsets::TEXT_PROCESSOR_NEXT_CHAR_1
         || cpu.pc == offsets::TEXT_PROCESSOR_NEXT_CHAR_2)
     {
-        cpu.a = game_data.current_message.pop().unwrap_or(0x50);
+        cpu.a = game_data.current_message.pop_front().unwrap_or(text::special::TERMINATOR);
         cpu.pc += 1;
     }
 
@@ -198,14 +177,14 @@ fn extract_movement_data(mem: &Memory) -> MovementData {
 pub fn extract_player_data(mem: &Memory) -> PlayerData {
     let mut name = vec![];
 
-    // TODO: Load player name from memory
-    // let mut offset = offsets::PLAYER_NAME_START;
-    // loop {
-    //     match mem.lb(offset) {
-    //         values::END_CHAR => break,
-    //         val => name.push(val),
-    //     }
-    // }
+    let mut offset = offsets::PLAYER_NAME_START;
+    for _ in 0..11 {
+        match mem.lb(offset) {
+            text::special::TERMINATOR => break,
+            val => name.push(val),
+        }
+        offset += 1;
+    }
 
     PlayerData {
         name: name,

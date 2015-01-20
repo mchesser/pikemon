@@ -139,7 +139,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
         // Draw the screen
         try!(renderer.copy(&emu_texture, None, Some(emu_dest_rect)));
 
-        try!(data.chat_box.draw(&renderer, &font_data, Rect::new(EMU_WIDTH, 0, CHAT_WIDTH, 800)));
+        try!(data.chat_box.draw(&renderer, &font_data, &Rect::new(EMU_WIDTH, 0, CHAT_WIDTH, 800)));
 
         // Draw the players
         let self_data = &data.last_state;

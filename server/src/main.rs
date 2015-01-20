@@ -1,3 +1,5 @@
+#![allow(unstable)] // This generates a lot of unnecessary warnings at the moment
+
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
 
@@ -35,7 +37,8 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                 let message = try!(player_packet);
                 match message {
                     NetworkEvent::FullUpdate(sender_id, _) |
-                    NetworkEvent::MovementUpdate(sender_id, _) => {
+                    NetworkEvent::MovementUpdate(sender_id, _) |
+                    NetworkEvent::Chat(sender_id, _) => {
                         for (&client_id, client_stream) in clients.iter_mut() {
                             if client_id != sender_id {
                                 try!(send_to_client(client_stream, &message));
@@ -54,12 +57,6 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                     NetworkEvent::BattleDataRequest(to, _) |
                     NetworkEvent::BattleDataResponse(to, _) => {
                         try!(send_to_client(&mut clients[to], &message))
-                    },
-
-                    NetworkEvent::Chat(_, _) => {
-                        for (_, client_stream) in clients.iter_mut() {
-                            try!(send_to_client(client_stream, &message));
-                        }
                     },
 
                     _ => unimplemented!(),

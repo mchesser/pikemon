@@ -1,4 +1,5 @@
 #![feature(slicing_syntax, box_syntax)]
+#![allow(unstable)] // This generates a lot of unnecessary warnings at the moment
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;

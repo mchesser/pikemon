@@ -6,10 +6,15 @@ pub const MAP_Y: u16 = 0xD361;
 pub const MAP_X: u16 = 0xD362;
 pub const PLAYER_DY: u16 = 0xC103;
 pub const PLAYER_DX: u16 = 0xC105;
+
 // The direction which the player is facing (0: down, 4: up, 8: left, 12: right)
 pub const PLAYER_DIR: u16 = 0xC109;
+
 // When a player moves, this value counts down from 8 to 0
 pub const WALK_COUNTER: u16 = 0xCFC5;
+
+// General player data
+pub const PLAYER_NAME_START: u16 = 0xD158;
 
 // The address of the player spritesheet encoded as 2bpp in the rom
 pub const PLAYER_SPRITE_ADDR: u16 = 0x4180;

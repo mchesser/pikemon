@@ -9,6 +9,7 @@ use common::{NetworkEvent, PlayerData, PlayerId};
 use common::error::{NetworkError, NetworkResult};
 
 use interface::{self, GameData, NetworkRequest, GameState};
+use interface::text;
 use chat::ChatBox;
 use gb_emu::mmu::Memory;
 
@@ -98,9 +99,14 @@ impl<'a> ClientDataManager<'a> {
     }
 
     pub fn send_message(&mut self) {
-        // TODO: Better error handling
-        let _ = self.local_update_sender.send(NetworkEvent::Chat(self.id,
-            self.chat_box.get_message_buffer()));
+        let msg = self.chat_box.get_message_buffer();
+
+        // Add the message to our chat box
+        self.chat_box.add_message(self.last_state.name.clone(),
+            text::Encoder::new(&*msg).collect());
+
+        // Send the message to the server
+        let _ = self.local_update_sender.send(NetworkEvent::Chat(self.id, msg));
     }
 
     pub fn recv_update(&mut self, mem: &mut Memory) {
@@ -141,10 +147,12 @@ impl<'a> ClientDataManager<'a> {
                         update_data));
                 },
 
-                Ok(NetworkEvent::Chat(id, message)) => {
-                    println!("Chat: {}", message);
-                    let id_string = format!("NAME[{}]:", id);
-                    self.chat_box.add_message(&*id_string, &*message);
+                Ok(NetworkEvent::Chat(id, msg)) => {
+                    let player_name = match self.game_data.borrow_mut().other_players.get(&id) {
+                        Some(player) => player.name.clone(),
+                        None => text::Encoder::new("UNKNOWN").collect(),
+                    };
+                    self.chat_box.add_message(player_name, text::Encoder::new(&*msg).collect());
                 },
 
                 Ok(_) => unimplemented!(),
