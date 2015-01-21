@@ -21,7 +21,7 @@ use common::PlayerData;
 use timer::Timer;
 use net::ClientDataManager;
 use sprite::Sprite;
-use interface::{self, GameState};
+use interface::{extract, GameState};
 use font::Font;
 
 const EMU_SCALE: i32 = 3;
@@ -49,11 +49,11 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
     let renderer = try!(Renderer::from_window(window, RenderDriverIndex::Auto,
         render::ACCELERATED));
 
-    let player_texture = try!(interface::extract_player_texture(&renderer, &mut emulator.mem));
+    let player_texture = try!(extract::player_texture(&renderer, &mut emulator.mem));
     try!(player_texture.set_blend_mode(BlendMode::Blend));
     let player_sprite = Sprite::new(player_texture, 16, 16, EMU_SCALE);
 
-    let font_texture = try!(interface::extract_font_texture(&renderer, &mut emulator.mem));
+    let font_texture = try!(extract::font_texture(&renderer, &mut emulator.mem));
     let font_data = Font::new(font_texture, 8, 8, FONT_SCALE);
 
     let emu_dest_rect = Rect::new(0, 0, EMU_WIDTH, EMU_HEIGHT);
@@ -116,7 +116,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
             let game_ready = data.game_data.borrow().game_state == GameState::Normal;
             if game_ready {
                 emulator.frame();
-                data.update_player_data(interface::extract_player_data(&emulator.mem));
+                data.update_player_data(extract::player_data(&emulator.mem));
             }
         }
 

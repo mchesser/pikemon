@@ -9,7 +9,7 @@ use common::{NetworkEvent, PlayerData, PlayerId};
 use common::error::{NetworkError, NetworkResult};
 
 use interface::{self, GameData, NetworkRequest, GameState};
-use interface::text;
+use interface::{text, extract};
 use chat::ChatBox;
 use gb_emu::mmu::Memory;
 
@@ -129,7 +129,7 @@ impl<'a> ClientDataManager<'a> {
 
                 Ok(NetworkEvent::BattleDataRequest(_, id)) => {
                     println!("Responding to battle request");
-                    let party = interface::extract_player_party(mem);
+                    let party = extract::player_party(mem);
                     let _ = self.local_update_sender.send(NetworkEvent::BattleDataResponse(id,
                         party));
                 },

@@ -89,59 +89,6 @@ impl<'a> Iterator for Encoder<'a> {
     }
 }
 
-pub struct Decoder<'a> {
-    base: &'a [u8],
-}
-
-impl<'a> Decoder<'a> {
-    pub fn new(base: &'a [u8]) -> Decoder<'a> {
-        Decoder { base: base }
-    }
-}
-
-impl<'a> Iterator for Decoder<'a> {
-    type Item = char;
-
-    fn next(&mut self) -> Option<char> {
-        fn decode_char(byte: u8) -> char {
-            match byte {
-                0x80...0x89 => ('A' as u8 + byte - 0x80) as char,
-
-                0x8A => '(',
-                0x8B => ')',
-                0x8C => ':',
-                0x8D => ';',
-                0x8E => '[',
-                0x8F => ']',
-
-                0xA0...0xA9 => ('a' as u8 + byte - 0xA0) as char,
-
-                0xE0 => '\'',
-                0xE3 => '-' ,
-                0xE6 => '?' ,
-                0xE7 => '!' ,
-                0xE8 => '.' ,
-                0xF3 => '/' ,
-                0xF4 => ',' ,
-
-                0xF6...0xFF => ('0' as u8 + byte - 0xF6) as char,
-
-                // Special characters
-                special::SPACE => ' ',
-                special::LINE_DOWN => '\n',
-                _ => '?'
-            }
-        }
-
-        if let Some(&byte) = self.base.first() {
-            self.base = &self.base[(1..)];
-            return Some(decode_char(byte));
-        }
-
-        None
-    }
-}
-
 /// Draw text, returning the total height of the text drawn
 pub fn draw_text(renderer: &Renderer, font: &Font, text: &[u8], target: &Rect) -> SdlResult<i32>
 {
