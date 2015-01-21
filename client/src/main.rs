@@ -21,7 +21,6 @@ use save::LocalSaveWrapper;
 mod client;
 mod timer;
 mod net;
-mod sprite;
 mod font;
 mod chat;
 mod interface;

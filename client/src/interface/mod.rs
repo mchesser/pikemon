@@ -4,8 +4,9 @@ use std::collections::HashMap;
 
 use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
+use gb_emu::graphics::{self, Gpu};
 
-use common::{PlayerData, PlayerId};
+use common::{SpriteData, PlayerData, PlayerId};
 use common::data::{self, Party};
 
 pub mod offsets;
@@ -159,4 +160,57 @@ pub fn set_battle(mem: &mut Memory, party: Party) {
     load_party(party, mem);
 }
 
+/// Render a 16x16 sprite
+/// Returns true if the sprite was drawn to the screen
+pub fn render_sprite(gpu: &mut Gpu, spritesheet: &[u8], sprite_data: &SpriteData) -> bool {
+    const SPRITE_HEIGHT: usize = 16;
+    const SPRITE_WIDTH: usize = 16;
+
+    let sprite_start = sprite_data.index * SPRITE_WIDTH * SPRITE_HEIGHT;
+    let sprite = &spritesheet[sprite_start..(sprite_start + SPRITE_WIDTH * SPRITE_HEIGHT)];
+
+    // Check if the sprite actually appears on the screen
+    if sprite_data.y >= graphics::HEIGHT as isize || sprite_data.y + SPRITE_HEIGHT as isize <= 0 ||
+        sprite_data.x >= graphics::WIDTH as isize || sprite_data.x + SPRITE_WIDTH as isize <= 0
+    {
+        return false;
+    }
+
+    let flags = sprite_data.flags;
+    let palette = if flags & 0x10 == 0 { gpu.obp0 } else { gpu.obp1 };
+
+    // Render the sprite to the framebuffer
+    // Note: Much of this code is similar to gb_emu::graphics::Gpu::render_sprite_scanline, the main
+    // differences is that it draws the entire sprite at once.
+    for dy in (0..SPRITE_HEIGHT as isize) {
+        if sprite_data.y + dy < 0 || sprite_data.y + dy >= graphics::HEIGHT as isize {
+            continue;
+        }
+        let mut current_pos = (sprite_data.y + dy) * graphics::WIDTH as isize + sprite_data.x;
+        let tile_y = if flags & 0x40 == 0 { dy as usize } else { SPRITE_HEIGHT - dy as usize - 1 };
+
+        for dx in (0..SPRITE_WIDTH as isize) {
+            // Check if this pixel is on the screen
+            if sprite_data.x + dx < 0 || sprite_data.x + dx >= graphics::WIDTH as isize {
+                current_pos += 1;
+                continue;
+            }
+
+            let px_priority = gpu.pixel_priorities[1 - gpu.backbuffer][current_pos as usize];
+            let tile_x = if flags & 0x20 == 0 { SPRITE_WIDTH - dx as usize - 1 }
+                         else { dx as usize };
+            let color_id = sprite[tile_y * SPRITE_WIDTH + tile_x];
+
+            if color_id != 0 && (flags & 0x80 == 0 || px_priority == 0) && px_priority <= 3 {
+                let color = graphics::palette_lookup(palette, color_id as usize);
+                graphics::write_pixel(&mut gpu.framebuffer[1 - gpu.backbuffer],
+                    current_pos as usize * graphics::BYTES_PER_PIXEL, color);
+            }
+
+            current_pos += 1;
+        }
+    }
+
+    true
+}
 

@@ -7,7 +7,7 @@ use sdl2::event::{Event, poll_event};
 use sdl2::keycode::KeyCode;
 use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
-use sdl2::render::{self, Renderer, RenderDriverIndex, RendererFlip, BlendMode, TextureAccess};
+use sdl2::render::{self, Renderer, RenderDriverIndex, TextureAccess};
 use sdl2::pixels::{PixelFormatFlag, Color};
 
 use gb_emu::cpu::Cpu;
@@ -16,12 +16,11 @@ use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
 use gb_emu::joypad;
 
-use common::PlayerData;
+use common::{PlayerData, SpriteData};
 
 use timer::Timer;
 use net::ClientDataManager;
-use sprite::Sprite;
-use interface::{extract, GameState};
+use interface::{self, extract, GameState};
 use font::Font;
 
 const EMU_SCALE: i32 = 3;
@@ -49,9 +48,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
     let renderer = try!(Renderer::from_window(window, RenderDriverIndex::Auto,
         render::ACCELERATED));
 
-    let player_texture = try!(extract::player_texture(&renderer, &mut emulator.mem));
-    try!(player_texture.set_blend_mode(BlendMode::Blend));
-    let player_sprite = Sprite::new(player_texture, 16, 16, EMU_SCALE);
+    let player_sprite = extract::default_sprite(&mut emulator.mem);
 
     let font_texture = try!(extract::font_texture(&renderer, &mut emulator.mem));
     let font_data = Font::new(font_texture, 8, 8, FONT_SCALE);
@@ -126,31 +123,38 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
             data.recv_update(&mut emulator.mem);
         }
 
+        try!(renderer.set_draw_color(WHITE));
+        try!(renderer.clear());
+
         // If there is a new screen ready, copy the internal framebuffer to the screen texture
         if emulator.poll_screen() {
+            // Render the other players to the screen
+            let self_data = &data.last_state;
+            for player in data.game_data.borrow().other_players.values() {
+                if player.is_visible_to(self_data) {
+                    let (x, y) = get_player_draw_position(self_data, player);
+                    let (index, flags) = get_sprite_index_and_flags(player.movement_data.direction,
+                        player.movement_data.walk_counter);
+                    let sprite_data = SpriteData {
+                        x: x as isize,
+                        y: y as isize,
+                        index: index as usize,
+                        flags: flags,
+                    };
+                    interface::render_sprite(&mut emulator.mem.gpu, &*player_sprite, &sprite_data);
+                }
+            }
+
+            // Copy the screen to the emulator texture
             try!(emu_texture.with_lock(None, |mut pixels, _| {
                 copy_memory(pixels.as_mut_slice(), emulator.front_buffer());
             }));
         }
 
-        try!(renderer.set_draw_color(WHITE));
-        try!(renderer.clear());
-
         // Draw the screen
         try!(renderer.copy(&emu_texture, None, Some(emu_dest_rect)));
 
         try!(data.chat_box.draw(&renderer, &font_data, &Rect::new(EMU_WIDTH, 0, CHAT_WIDTH, 800)));
-
-        // Draw the players
-        let self_data = &data.last_state;
-        for player in data.game_data.borrow().other_players.values() {
-            if player.is_visible_to(self_data) {
-                let (x, y) = get_player_draw_position(self_data, player);
-                let (frame, flip) = determine_frame_index_and_flip(player.movement_data.direction,
-                    player.movement_data.walk_counter);
-                try!(player_sprite.draw(&renderer, x * EMU_SCALE, y * EMU_SCALE, frame, flip));
-            }
-        }
 
         renderer.present();
     }
@@ -188,15 +192,17 @@ fn get_player_position(player: &PlayerData) -> (i32, i32) {
     }
 }
 
-fn determine_frame_index_and_flip(direction: u8, walk_counter: u8) -> (i32, RendererFlip) {
-    let (mut index, flip) = match direction {
-        0  => (0, RendererFlip::None),          // Down
-        4  => (1, RendererFlip::None),          // Up
-        8  => (2, RendererFlip::Horizontal),    // Right
-        12 => (2, RendererFlip::None),          // Left
+fn get_sprite_index_and_flags(direction: u8, walk_counter: u8) -> (isize, u8) {
+    let (mut index, mut flags) = match direction {
+        0  => (0, 0x00),    // Down
+        4  => (1, 0x00),    // Up
+        8  => (2, 0x00),    // Right
+        12 => (2, 0x20),    // Left
 
-        _  => (0, RendererFlip::None),          // Usually unreachable
+        _  => (0, 0x00),    // Usually unreachable
     };
+
+    flags |= 0x80;
 
     index += match walk_counter / 4 {
         0 => 0,
@@ -205,7 +211,7 @@ fn determine_frame_index_and_flip(direction: u8, walk_counter: u8) -> (i32, Rend
         _ => 0, // Usually unreachable
     };
 
-    (index, flip)
+    (index, flags)
 }
 
 fn handle_keyboard_chat(client_data: &mut ClientDataManager, key_code: KeyCode) {

@@ -22,6 +22,8 @@ pub enum NetworkEvent {
 #[derive(Clone, Show, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct PlayerData {
     pub name: Vec<u8>,
+    // pub sprite: Vec<u8>, -- TODO: allow players to choose their own sprite
+    // pub sprite_data: SpriteData,
     pub movement_data: MovementData,
 }
 
@@ -80,4 +82,12 @@ impl MovementData {
             (self.map_x, self.map_y)
         }
     }
+}
+
+/// The sprite data for a 16x16 sprite
+pub struct SpriteData {
+    pub x: isize,
+    pub y: isize,
+    pub index: usize,
+    pub flags: u8,
 }
