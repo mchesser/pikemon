@@ -128,21 +128,8 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
         // If there is a new screen ready, copy the internal framebuffer to the screen texture
         if emulator.poll_screen() {
-            // Render the other players to the screen
-            let self_data = &data.last_state;
-            for player in data.game_data.borrow().other_players.values() {
-                if player.is_visible_to(self_data) {
-                    let (x, y) = get_player_draw_position(self_data, player);
-                    let (index, flags) = get_sprite_index_and_flags(player.movement_data.direction,
-                        player.movement_data.walk_counter);
-                    let sprite_data = SpriteData {
-                        x: x as isize,
-                        y: y as isize,
-                        index: index as usize,
-                        flags: flags,
-                    };
-                    interface::render_sprite(&mut emulator.mem.gpu, &*player_sprite, &sprite_data);
-                }
+            if interface::sprites_enabled(&emulator.mem) {
+                draw_other_players(&data, &mut emulator.mem, &*player_sprite);
             }
 
             // Copy the screen to the emulator texture
@@ -159,6 +146,24 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
         renderer.present();
     }
     Ok(())
+}
+
+fn draw_other_players(data: &ClientDataManager, mem: &mut Memory, sprite: &[u8]) {
+    let self_data = &data.last_state;
+    for player in data.game_data.borrow().other_players.values() {
+        if player.is_visible_to(self_data) {
+            let (x, y) = get_player_draw_position(self_data, player);
+            let (index, flags) = get_sprite_index_and_flags(player.movement_data.direction,
+                player.movement_data.walk_counter);
+            let sprite_data = SpriteData {
+                x: x as isize,
+                y: y as isize,
+                index: index as usize,
+                flags: flags,
+            };
+            interface::render_sprite(&mut mem.gpu, sprite, &sprite_data);
+        }
+    }
 }
 
 fn get_player_draw_position(self_player: &PlayerData, other_player: &PlayerData) -> (i32, i32) {

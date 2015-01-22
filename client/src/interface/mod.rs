@@ -14,6 +14,10 @@ pub mod values;
 pub mod extract;
 pub mod text;
 
+pub fn sprites_enabled(mem: &Memory) -> bool {
+    mem.lb(offsets::SPRITES_ENABLED) == 0x01
+}
+
 fn load_party(party: data::Party, mem: &mut Memory) {
     let pokemon = party.pokemon;
     let pokemon_array = [pokemon.0, pokemon.1, pokemon.2, pokemon.3, pokemon.4, pokemon.5];

@@ -30,6 +30,7 @@ pub const FRAME_COUNTER: u16 = 0xFFD5;
 pub const BANK_SWITCH: u16 = 0x35D6;
 
 // Addresses for sprite check hack
+pub const SPRITES_ENABLED: u16 = 0xCFCB;
 pub const NUM_SPRITES: u16 = 0xD4E1;
 pub const OVERWORLD_LOOP_START: u16 = 0x03FF;
 pub const SPRITE_CHECK_START: u16 = 0x0B23;
