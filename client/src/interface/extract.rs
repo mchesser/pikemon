@@ -136,7 +136,6 @@ fn extract_sprite(mem: &Memory, bank: usize, addr: u16) -> Vec<u8> {
     buffer
 }
 
-
 const RMASK: u32 = 0x000000FF;
 const GMASK: u32 = 0x0000FF00;
 const BMASK: u32 = 0x00FF0000;

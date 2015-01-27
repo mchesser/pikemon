@@ -42,8 +42,8 @@ fn main() {
 
     let game_data = RefCell::new(GameData::new());
     let mut emulator = box Emulator::new(|cpu, mem| {
-        interface::sprite_check_hack(cpu, mem, &mut *game_data.borrow_mut());
-        interface::display_text_hack(cpu, mem, &mut *game_data.borrow_mut());
+        interface::hacks::sprite_check(cpu, mem, &mut *game_data.borrow_mut());
+        interface::hacks::display_text(cpu, mem, &mut *game_data.borrow_mut());
     });
 
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
