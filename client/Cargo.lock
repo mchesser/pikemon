@@ -29,7 +29,7 @@ dependencies = [
 [[package]]
 name = "gb_emu"
 version = "0.0.1"
-source = "git+https://github.com/quvarxa/gb_emu.git#769ea4bbe75fbd33ebd986a8a30dffa5ace953f6"
+source = "git+https://github.com/quvarxa/gb_emu.git#699e290bbdd96c97480ad52dbb709c97537b726f"
 
 [[package]]
 name = "pkg-config"

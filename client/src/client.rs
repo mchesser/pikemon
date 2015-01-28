@@ -10,7 +10,6 @@ use sdl2::video::WindowPos::PosCentered;
 use sdl2::render::{self, Renderer, RenderDriverIndex, TextureAccess};
 use sdl2::pixels::{PixelFormatFlag, Color};
 
-use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
 use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
@@ -20,7 +19,7 @@ use common::{PlayerData, SpriteData};
 
 use timer::Timer;
 use net::ClientDataManager;
-use interface::{self, extract, GameState};
+use interface::{self, extract, hacks, GameState};
 use font::Font;
 
 const EMU_SCALE: i32 = 3;
@@ -36,9 +35,7 @@ enum KeyboardTarget {
     Menu,
 }
 
-pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> SdlResult<()>
-    where F: FnMut(&mut Cpu, &mut Memory)
-{
+pub fn run(mut data: ClientDataManager, mut emulator: Box<Emulator>) -> SdlResult<()> {
     const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
 
     sdl2::init(sdl2::INIT_EVERYTHING);
@@ -112,7 +109,25 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
             emulator_timer.reset();
             let game_ready = data.game_data.borrow().game_state == GameState::Normal;
             if game_ready {
-                emulator.frame();
+                emulator.frame(
+                    |cpu, mem| {
+                        hacks::sprite_check(cpu, mem, &mut *data.game_data.borrow_mut());
+                        hacks::display_text(cpu, mem, &mut *data.game_data.borrow_mut());
+                        hacks::sprite_update_tracker(cpu, mem, &mut *data.game_data.borrow_mut());
+                    },
+
+                    |_, mem| {
+                        if data.game_data.borrow().sprites_enabled() {
+                            draw_other_players(&data, mem, &*player_sprite);
+                        }
+
+                        // Copy the screen to the emulator texture
+                        let _ = emu_texture.with_lock(None, |mut pixels, _| {
+                            copy_memory(pixels.as_mut_slice(), &mem.gpu.framebuffer);
+                        });
+                    }
+                );
+
                 data.update_player_data(extract::player_data(&emulator.mem));
             }
         }
@@ -126,22 +141,11 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
         try!(renderer.set_draw_color(WHITE));
         try!(renderer.clear());
 
-        // If there is a new screen ready, copy the internal framebuffer to the screen texture
-        if emulator.poll_screen() {
-            if data.game_data.borrow().sprites_enabled() {
-                draw_other_players(&data, &mut emulator.mem, &*player_sprite);
-            }
-
-            // Copy the screen to the emulator texture
-            try!(emu_texture.with_lock(None, |mut pixels, _| {
-                copy_memory(pixels.as_mut_slice(), emulator.front_buffer());
-            }));
-        }
-
         // Draw the screen
         try!(renderer.copy(&emu_texture, None, Some(emu_dest_rect)));
 
-        try!(data.chat_box.draw(&renderer, &font_data, &Rect::new(EMU_WIDTH, 0, CHAT_WIDTH, 800)));
+        try!(data.chat_box.draw(&renderer, &font_data, &Rect::new(EMU_WIDTH, 0, CHAT_WIDTH,
+            EMU_HEIGHT)));
 
         renderer.present();
     }

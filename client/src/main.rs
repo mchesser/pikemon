@@ -41,11 +41,7 @@ fn main() {
     let id = net::handle_network(network_manager).unwrap();
 
     let game_data = RefCell::new(GameData::new());
-    let mut emulator = box Emulator::new(|cpu, mem| {
-        interface::hacks::sprite_check(cpu, mem, &mut *game_data.borrow_mut());
-        interface::hacks::display_text(cpu, mem, &mut *game_data.borrow_mut());
-        interface::hacks::sprite_update_tracker(cpu, mem, &mut *game_data.borrow_mut());
-    });
+    let mut emulator = box Emulator::new();
 
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
     let save_path = Path::new("Pokemon Red.sav");

@@ -151,14 +151,14 @@ pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &SpriteD
                 continue;
             }
 
-            let px_priority = gpu.pixel_priorities[1 - gpu.backbuffer][current_pos as usize];
+            let px_priority = gpu.pixel_priorities[current_pos as usize];
             let tile_x = if flags & 0x20 == 0 { SPRITE_WIDTH - dx as usize - 1 }
                          else { dx as usize };
             let color_id = sprite[tile_y * SPRITE_WIDTH + tile_x];
 
             if color_id != 0 && (flags & 0x80 == 0 || px_priority == 0) && px_priority <= 3 {
                 let color = graphics::palette_lookup(palette, color_id as usize);
-                graphics::write_pixel(&mut gpu.framebuffer[1 - gpu.backbuffer],
+                graphics::write_pixel(&mut gpu.framebuffer,
                     current_pos as usize * graphics::BYTES_PER_PIXEL, color);
             }
 
