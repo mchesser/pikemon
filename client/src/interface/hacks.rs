@@ -71,3 +71,12 @@ pub fn display_text(cpu: &mut Cpu, mem: &mut Memory, game_data: &mut GameData) {
         game_data.text_state = DataState::Normal;
     }
 }
+
+pub fn sprite_update_tracker(cpu: &Cpu, mem: &Memory, game_data: &mut GameData) {
+    if cpu.pc == offsets::UPDATE_SPRITES {
+        game_data.sprites_enabled = mem.lb(offsets::SPRITES_ENABLED) == 0x01;
+    }
+    else if cpu.pc == offsets::CLEAR_SPRITES {
+        game_data.sprites_enabled = false;
+    }
+}

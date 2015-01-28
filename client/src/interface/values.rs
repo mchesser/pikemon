@@ -29,3 +29,5 @@ pub enum TrainerClass {
 
 // This gets added to the trainer class when setting CURRENT_OPPONENT
 pub const TRAINER_TAG: u8 = 0xC8;
+
+pub const MAX_MAP_TILE: u8 = 0x5F;

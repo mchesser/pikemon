@@ -11,6 +11,7 @@ pub enum NetworkError {
     SendError,
     RecvError,
     DecodeError,
+    EncodeError,
 }
 
 impl Error for NetworkError {
@@ -20,11 +21,17 @@ impl Error for NetworkError {
             NetworkError::SendError => "sending on a closed channel",
             NetworkError::RecvError => "receiving on a closed channel",
             NetworkError::DecodeError => "received invalid network data",
+            NetworkError::EncodeError => "failed to encode network data",
         }
     }
 }
 
-impl fmt::Show for NetworkError {
+impl fmt::Display for NetworkError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+impl fmt::Debug for NetworkError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }

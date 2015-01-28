@@ -50,7 +50,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
     let mut sender_socket = network_manager.socket;
     Thread::spawn(move|| {
         loop {
-            let packet = json::encode(&local_update_receiver.recv().unwrap());
+            let packet = json::encode(&local_update_receiver.recv().unwrap()).unwrap();
 
             // TODO: better error handling
             let _ = sender_socket.write_str(&*packet);

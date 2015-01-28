@@ -3,7 +3,7 @@ use std::collections::RingBuf;
 use std::collections::HashMap;
 
 use gb_emu::mmu::Memory;
-use gb_emu::graphics::{self, Gpu};
+use gb_emu::graphics;
 
 use common::{SpriteData, PlayerData, PlayerId};
 use common::data::{self, Party};
@@ -13,27 +13,6 @@ pub mod values;
 pub mod extract;
 pub mod text;
 pub mod hacks;
-
-pub fn sprites_enabled(mem: &Memory) -> bool {
-    mem.lb(offsets::SPRITES_ENABLED) == 0x01
-}
-
-fn load_party(party: data::Party, mem: &mut Memory) {
-    let pokemon = party.pokemon;
-    let pokemon_array = [pokemon.0, pokemon.1, pokemon.2, pokemon.3, pokemon.4, pokemon.5];
-
-    let mut addr = (offsets::PROF_OAK_DATA_ADDR & 0x3FFF) as usize;
-    let bank = offsets::PROF_OAK_DATA_BANK;
-
-    mem.cart.rom[bank][addr] = 0xFF;
-    addr += 1;
-    for mon in pokemon_array.iter().take(party.num_pokemon as usize) {
-        mem.cart.rom[bank][addr] = mon.level;
-        mem.cart.rom[bank][addr + 1] = mon.species;
-        addr += 2;
-    }
-    mem.cart.rom[bank][addr] = 0;
-}
 
 #[derive(PartialEq)]
 enum DataState {
@@ -61,6 +40,7 @@ pub struct GameData {
     sprite_id_state: DataState,
     text_state: DataState,
     current_message: RingBuf<u8>,
+    sprites_enabled: bool,
 }
 
 impl GameData {
@@ -73,7 +53,12 @@ impl GameData {
             sprite_id_state: DataState::Normal,
             text_state: DataState::Normal,
             current_message: RingBuf::new(),
+            sprites_enabled: false,
         }
+    }
+
+    pub fn sprites_enabled(&self) -> bool {
+        self.sprites_enabled
     }
 
     pub fn create_message_box(&mut self, input: &str) {
@@ -82,6 +67,30 @@ impl GameData {
         self.current_message.push_back(text::special::END_MSG);
         self.current_message.push_back(text::special::TERMINATOR);
     }
+}
+
+pub fn get_tile_id_addr(x: u8, y: u8) -> u16 {
+    let y_offset = (((y + 4) & 0xF0) >> 3) as u16;
+    let x_offset = ((x >> 3) + 0x14) as u16;
+
+    offsets::TILE_MAP + 20 * y_offset + x_offset
+}
+
+fn load_party(party: data::Party, mem: &mut Memory) {
+    let pokemon = party.pokemon;
+    let pokemon_array = [pokemon.0, pokemon.1, pokemon.2, pokemon.3, pokemon.4, pokemon.5];
+
+    let mut addr = (offsets::PROF_OAK_DATA_ADDR & 0x3FFF) as usize;
+    let bank = offsets::PROF_OAK_DATA_BANK;
+
+    mem.cart.rom[bank][addr] = 0xFF;
+    addr += 1;
+    for mon in pokemon_array.iter().take(party.num_pokemon as usize) {
+        mem.cart.rom[bank][addr] = mon.level;
+        mem.cart.rom[bank][addr + 1] = mon.species;
+        addr += 2;
+    }
+    mem.cart.rom[bank][addr] = 0;
 }
 
 // A temporary method to set a battle. In future we probably want to do more of the setup manually
@@ -97,12 +106,9 @@ pub fn set_battle(mem: &mut Memory, party: Party) {
 
 /// Render a 16x16 sprite
 /// Returns true if the sprite was drawn to the screen
-pub fn render_sprite(gpu: &mut Gpu, spritesheet: &[u8], sprite_data: &SpriteData) -> bool {
+pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &SpriteData) -> bool {
     const SPRITE_HEIGHT: usize = 16;
     const SPRITE_WIDTH: usize = 16;
-
-    let sprite_start = sprite_data.index * SPRITE_WIDTH * SPRITE_HEIGHT;
-    let sprite = &spritesheet[sprite_start..(sprite_start + SPRITE_WIDTH * SPRITE_HEIGHT)];
 
     // Check if the sprite actually appears on the screen
     if sprite_data.y >= graphics::HEIGHT as isize || sprite_data.y + SPRITE_HEIGHT as isize <= 0 ||
@@ -111,6 +117,20 @@ pub fn render_sprite(gpu: &mut Gpu, spritesheet: &[u8], sprite_data: &SpriteData
         return false;
     }
 
+    // Check if the sprite is hidden under a menu or a tile
+    let tile_addr = get_tile_id_addr(sprite_data.x as u8, sprite_data.y as u8);
+    if mem.lb(tile_addr) > values::MAX_MAP_TILE ||
+        mem.lb(tile_addr + 1) > values::MAX_MAP_TILE ||
+        mem.lb(tile_addr - 20) > values::MAX_MAP_TILE ||
+        mem.lb(tile_addr - 19) > values::MAX_MAP_TILE
+    {
+        return false;
+    }
+
+    let sprite_start = sprite_data.index * SPRITE_WIDTH * SPRITE_HEIGHT;
+    let sprite = &spritesheet[sprite_start..(sprite_start + SPRITE_WIDTH * SPRITE_HEIGHT)];
+
+    let gpu = &mut mem.gpu;
     let flags = sprite_data.flags;
     let palette = if flags & 0x10 == 0 { gpu.obp0 } else { gpu.obp1 };
 

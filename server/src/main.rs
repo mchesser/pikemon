@@ -79,7 +79,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
 }
 
 fn send_to_client(client_stream: &mut TcpStream, message: &NetworkEvent) -> IoResult<()> {
-    let encoded_message = json::encode(&message);
+    let encoded_message = json::encode(&message).unwrap();
     try!(client_stream.write_str(&*encoded_message));
     client_stream.write_char('\n')
 }
@@ -134,6 +134,6 @@ fn client_handler(client: Client) -> NetworkResult<()> {
 
 fn main() {
     if let Err(e) = run_server("0.0.0.0:8080") {
-        println!("Server failed unexpectedly and had to close.\nReason: {:?}", e);
+        println!("Server failed unexpectedly and had to close.\nReason: {}", e);
     }
 }

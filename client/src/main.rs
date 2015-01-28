@@ -44,6 +44,7 @@ fn main() {
     let mut emulator = box Emulator::new(|cpu, mem| {
         interface::hacks::sprite_check(cpu, mem, &mut *game_data.borrow_mut());
         interface::hacks::display_text(cpu, mem, &mut *game_data.borrow_mut());
+        interface::hacks::sprite_update_tracker(cpu, mem, &mut *game_data.borrow_mut());
     });
 
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();

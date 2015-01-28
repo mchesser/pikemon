@@ -24,19 +24,26 @@ pub const PLAYER_SPRITE_BANK: usize = 5;
 pub const FONT_ADDR: u16 = 0x5A80;
 pub const FONT_BANK: usize = 4;
 
+// The location of the tile map
+pub const TILE_MAP: u16 = 0xC3A0;
+
 // Useful addresses for hacks
 pub const LOADED_ROM_BANK: u16 = 0xFFB8;
 pub const FRAME_COUNTER: u16 = 0xFFD5;
 pub const BANK_SWITCH: u16 = 0x35D6;
 
 // Addresses for sprite check hack
-pub const SPRITES_ENABLED: u16 = 0xCFCB;
 pub const NUM_SPRITES: u16 = 0xD4E1;
 pub const OVERWORLD_LOOP_START: u16 = 0x03FF;
 pub const SPRITE_CHECK_START: u16 = 0x0B23;
 pub const SPRITE_CHECK_EXIT_1: u16 = 0x0BA0;
 pub const SPRITE_CHECK_EXIT_2: u16 = 0x0BC4;
 pub const SPRITE_INDEX: u16 = 0xFF8C;
+
+// Addresses for sprite update hack
+pub const CLEAR_SPRITES: u16 = 0x0082;
+pub const UPDATE_SPRITES: u16 = 0x2429;
+pub const SPRITES_ENABLED: u16 = 0xCFCB;
 
 // Addresses for display text hack
 pub const DISPLAY_TEXT_ID: u16 = 0x2920;

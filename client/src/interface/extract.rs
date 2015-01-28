@@ -148,18 +148,18 @@ pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: usize, addr
 {
     let num_x_tiles = width / TILE_SIZE;
     let num_y_tiles = height / TILE_SIZE;
-    let buffer_size = width * height * SDL_BYTES_PER_PIXEL;
+    let buffer_size = (width * height * SDL_BYTES_PER_PIXEL) as usize;
 
     let mut output_buffer: Vec<_> = iter::repeat(0).take(buffer_size).collect();
     let mut sprite_offset = (addr & 0x3FFF) as usize;
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_y < num_y_tiles {
-        for y in 0..8 {
+        for y in (0..8us) {
             let color_row = mem.cart.rom[bank][sprite_offset];
             sprite_offset += 1;
 
-            for x in 0..8 {
+            for x in (0..8us) {
                 // Compute the offset of where to place this pixel in the output buffer
                 let offset = (((tile_x * TILE_SIZE) + x) +
                     ((tile_y * TILE_SIZE) + y) * width) * SDL_BYTES_PER_PIXEL;
@@ -187,7 +187,7 @@ pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: usize, addr
         }
     }
 
-    let surface = try!(Surface::from_data(&mut *output_buffer, width as isize,
-        height as isize, 32, (width * SDL_BYTES_PER_PIXEL) as isize, RMASK, GMASK, BMASK, AMASK));
+    let surface = try!(Surface::from_data(&mut *output_buffer, width as i32, height as i32, 32,
+        (width * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
     renderer.create_texture_from_surface(&surface)
 }

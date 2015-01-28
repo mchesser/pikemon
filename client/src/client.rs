@@ -43,8 +43,8 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
     sdl2::init(sdl2::INIT_EVERYTHING);
 
-    let window = try!(Window::new("Pikemon", PosCentered, PosCentered,
-        (EMU_WIDTH + CHAT_WIDTH) as isize, EMU_HEIGHT as isize, OPENGL));
+    let window = try!(Window::new("Pikemon", PosCentered, PosCentered, EMU_WIDTH + CHAT_WIDTH,
+        EMU_HEIGHT, OPENGL));
     let renderer = try!(Renderer::from_window(window, RenderDriverIndex::Auto,
         render::ACCELERATED));
 
@@ -55,7 +55,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
     let emu_dest_rect = Rect::new(0, 0, EMU_WIDTH, EMU_HEIGHT);
     let emu_texture = try!(renderer.create_texture(PixelFormatFlag::ARGB8888,
-        TextureAccess::Streaming, graphics::WIDTH as isize, graphics::HEIGHT as isize));
+        TextureAccess::Streaming, graphics::WIDTH as i32, graphics::HEIGHT as i32));
 
     let mut keyboard_target = KeyboardTarget::Emulator;
     let mut fast_mode = false;
@@ -128,7 +128,7 @@ pub fn run<F>(mut data: ClientDataManager, mut emulator: Box<Emulator<F>>) -> Sd
 
         // If there is a new screen ready, copy the internal framebuffer to the screen texture
         if emulator.poll_screen() {
-            if interface::sprites_enabled(&emulator.mem) {
+            if data.game_data.borrow().sprites_enabled() {
                 draw_other_players(&data, &mut emulator.mem, &*player_sprite);
             }
 
@@ -161,7 +161,7 @@ fn draw_other_players(data: &ClientDataManager, mem: &mut Memory, sprite: &[u8])
                 index: index as usize,
                 flags: flags,
             };
-            interface::render_sprite(&mut mem.gpu, sprite, &sprite_data);
+            interface::render_sprite(mem, sprite, &sprite_data);
         }
     }
 }
