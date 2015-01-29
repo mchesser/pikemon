@@ -44,13 +44,13 @@ impl ChatBox {
         });
     }
 
-    pub fn draw(&self, renderer: &Renderer, font: &Font, rect: &Rect) -> SdlResult<()> {
+    pub fn draw(&self, renderer: &Renderer, font: &Font, rect: Rect) -> SdlResult<()> {
         let mut y = rect.y;
         let msg_padding = 2 * font.char_width();
 
         // Draw the text that the player is currently typing
         let encoded_buffer: Vec<_> = text::Encoder::new(&*self.message_buffer).collect();
-        y += try!(draw_text(renderer, font, &*encoded_buffer, rect));
+        y += try!(draw_text(renderer, font, &*encoded_buffer, &rect));
 
         for message in self.messages.iter().rev() {
             y += try!(draw_text(renderer, font, &*message.user_name,

@@ -19,6 +19,7 @@ use net::{NetworkManager, ClientDataManager};
 use save::LocalSaveWrapper;
 
 mod client;
+mod game;
 mod timer;
 mod net;
 mod font;
