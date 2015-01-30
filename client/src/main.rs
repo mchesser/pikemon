@@ -14,7 +14,7 @@ use gb_emu::emulator::Emulator;
 use gb_emu::cart;
 use common::PlayerData;
 
-use interface::GameData;
+use interface::InterfaceData;
 use net::{NetworkManager, ClientDataManager};
 use save::LocalSaveWrapper;
 
@@ -41,7 +41,7 @@ fn main() {
     };
     let id = net::handle_network(network_manager).unwrap();
 
-    let game_data = RefCell::new(GameData::new());
+    let interface_data = RefCell::new(InterfaceData::new());
     let mut emulator = box Emulator::new();
 
     let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
@@ -53,7 +53,7 @@ fn main() {
 
     let client_data_manager = ClientDataManager {
         id: id,
-        game_data: &game_data,
+        interface_data: &interface_data,
         last_state: PlayerData::new(),
         new_update: false,
         local_update_sender: local_update_sender,

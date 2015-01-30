@@ -14,7 +14,7 @@ use common::{PlayerData, SpriteData};
 
 use client;
 use net::ClientDataManager;
-use interface::{self, extract, hacks};
+use interface::{self, extract, hacks, InterfaceState};
 use font::Font;
 
 enum GameState {
@@ -49,7 +49,7 @@ impl<'a> Game<'a> {
     }
 
     pub fn update(&mut self) {
-        if self.data.game_data.borrow().game_state == interface::GameState::Normal {
+        if self.data.interface_data.borrow().state == InterfaceState::Normal {
             let mut data = &mut self.data;
             let mut emulator = &mut self.emulator;
             let emu_texture = &mut self.emu_texture;
@@ -57,13 +57,13 @@ impl<'a> Game<'a> {
 
             emulator.frame(
                 |cpu, mem| {
-                    hacks::sprite_check(cpu, mem, &mut *data.game_data.borrow_mut());
-                    hacks::display_text(cpu, mem, &mut *data.game_data.borrow_mut());
-                    hacks::sprite_update_tracker(cpu, mem, &mut *data.game_data.borrow_mut());
+                    hacks::sprite_check(cpu, mem, &mut *data.interface_data.borrow_mut());
+                    hacks::display_text(cpu, mem, &mut *data.interface_data.borrow_mut());
+                    hacks::sprite_update_tracker(cpu, mem, &mut *data.interface_data.borrow_mut());
                 },
 
                 |_, mem| {
-                    if data.game_data.borrow().sprites_enabled() {
+                    if data.interface_data.borrow().sprites_enabled() {
                         draw_other_players(data, mem, default_sprite);
                     }
 
@@ -179,7 +179,7 @@ impl<'a> Game<'a> {
 
 fn draw_other_players(data: &ClientDataManager, mem: &mut Memory, sprite: &[u8]) {
     let self_data = &data.last_state;
-    for player in data.game_data.borrow().other_players.values() {
+    for player in data.interface_data.borrow().other_players.values() {
         if player.is_visible_to(self_data) {
             let (x, y) = get_player_draw_position(self_data, player);
             let (index, flags) = get_sprite_index_and_flags(player.movement_data.direction,

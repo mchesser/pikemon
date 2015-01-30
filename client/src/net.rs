@@ -8,7 +8,7 @@ use rustc_serialize::json;
 use common::{NetworkEvent, PlayerData, PlayerId};
 use common::error::{NetworkError, NetworkResult};
 
-use interface::{self, GameData, NetworkRequest, GameState};
+use interface::{self, InterfaceData, NetworkRequest, InterfaceState};
 use interface::{text, extract};
 use chat::ChatBox;
 use gb_emu::mmu::Memory;
@@ -63,7 +63,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
 
 pub struct ClientDataManager<'a> {
     pub id: PlayerId,
-    pub game_data: &'a RefCell<GameData>,
+    pub interface_data: &'a RefCell<InterfaceData>,
     pub last_state: PlayerData,
     pub new_update: bool,
     pub local_update_sender: Sender<NetworkEvent>,
@@ -87,7 +87,7 @@ impl<'a> ClientDataManager<'a> {
             self.new_update = false;
         }
 
-        match self.game_data.borrow_mut().network_request {
+        match self.interface_data.borrow_mut().network_request {
             NetworkRequest::None => {},
             NetworkRequest::Battle(id) => {
                 println!("Requesting battle");
@@ -95,7 +95,7 @@ impl<'a> ClientDataManager<'a> {
                 let _ = self.local_update_sender.send(NetworkEvent::BattleDataRequest(id, self.id));
             },
         }
-        self.game_data.borrow_mut().network_request = NetworkRequest::None;
+        self.interface_data.borrow_mut().network_request = NetworkRequest::None;
     }
 
     pub fn send_message(&mut self) {
@@ -113,18 +113,18 @@ impl<'a> ClientDataManager<'a> {
         loop {
             match self.global_update_receiver.try_recv() {
                 Ok(NetworkEvent::FullUpdate(id, data)) => {
-                    self.game_data.borrow_mut().other_players.insert(id, data);
+                    self.interface_data.borrow_mut().other_players.insert(id, data);
                 },
 
                 Ok(NetworkEvent::MovementUpdate(id, data)) => {
-                    if let Some(player) = self.game_data.borrow_mut().other_players.get_mut(&id) {
+                    if let Some(player) = self.interface_data.borrow_mut().other_players.get_mut(&id) {
                         player.movement_data = data;
                     }
                 },
 
                 Ok(NetworkEvent::PlayerQuit(id)) => {
                     println!("Player: {} quit.", id);
-                    self.game_data.borrow_mut().other_players.remove(&id);
+                    self.interface_data.borrow_mut().other_players.remove(&id);
                 },
 
                 Ok(NetworkEvent::BattleDataRequest(_, id)) => {
@@ -135,7 +135,7 @@ impl<'a> ClientDataManager<'a> {
                 },
 
                 Ok(NetworkEvent::BattleDataResponse(_, party)) => {
-                    self.game_data.borrow_mut().game_state = GameState::Normal;
+                    self.interface_data.borrow_mut().state = InterfaceState::Normal;
                     interface::set_battle(mem, party);
                 },
 
@@ -148,7 +148,7 @@ impl<'a> ClientDataManager<'a> {
                 },
 
                 Ok(NetworkEvent::Chat(id, msg)) => {
-                    let player_name = match self.game_data.borrow_mut().other_players.get(&id) {
+                    let player_name = match self.interface_data.borrow_mut().other_players.get(&id) {
                         Some(player) => player.name.clone(),
                         None => text::Encoder::new("UNKNOWN").collect(),
                     };

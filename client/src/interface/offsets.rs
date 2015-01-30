@@ -49,8 +49,8 @@ pub const SPRITES_ENABLED: u16 = 0xCFCB;
 pub const DISPLAY_TEXT_ID: u16 = 0x2920;
 pub const DISPLAY_TEXT_ID_AFTER_INIT: u16 = 0x292B;
 pub const DISPLAY_TEXT_SETUP_DONE: u16 = 0x29CD;
-pub const TEXT_PROCESSOR_NEXT_CHAR_1: u16 = 0x1B55;
-pub const TEXT_PROCESSOR_NEXT_CHAR_2: u16 = 0x1956;
+pub const GET_NEXT_CHAR_1: u16 = 0x1B55;
+pub const GET_NEXT_CHAR_2: u16 = 0x1956;
 pub const TEXT_PROCESSOR_END: u16 = 0x1B5E;
 
 // Addresses for battle hack

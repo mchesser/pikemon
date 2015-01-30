@@ -21,7 +21,7 @@ enum DataState {
 }
 
 #[derive(PartialEq)]
-pub enum GameState {
+pub enum InterfaceState {
     Normal,
     Waiting,
 }
@@ -32,8 +32,8 @@ pub enum NetworkRequest {
     Battle(PlayerId),
 }
 
-pub struct GameData {
-    pub game_state: GameState,
+pub struct InterfaceData {
+    pub state: InterfaceState,
     pub network_request: NetworkRequest,
     pub other_players: HashMap<u32, PlayerData>,
     last_interaction: u32,
@@ -43,10 +43,10 @@ pub struct GameData {
     sprites_enabled: bool,
 }
 
-impl GameData {
-    pub fn new() -> GameData {
-        GameData {
-            game_state: GameState::Normal,
+impl InterfaceData {
+    pub fn new() -> InterfaceData {
+        InterfaceData {
+            state: InterfaceState::Normal,
             network_request: NetworkRequest::None,
             other_players: HashMap::new(),
             last_interaction: 0,
