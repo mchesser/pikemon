@@ -13,27 +13,22 @@ struct Message {
 }
 
 pub struct ChatBox {
+    pub message_ready: bool,
+    pub message_buffer: String,
     messages: Vec<Message>,
-    message_buffer: String,
 }
 
 impl ChatBox {
     pub fn new() -> ChatBox {
         ChatBox {
-            messages: Vec::new(),
+            message_ready: false,
             message_buffer: String::new(),
+            messages: Vec::new(),
         }
     }
 
-    pub fn push_char(&mut self, value: char) {
-        self.message_buffer.push(value);
-    }
-
-    pub fn remove_char(&mut self) {
-        self.message_buffer.pop();
-    }
-
     pub fn get_message_buffer(&mut self) -> String {
+        self.message_ready = false;
         mem::replace(&mut self.message_buffer, String::new())
     }
 

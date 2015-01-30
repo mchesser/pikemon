@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::slice::bytes::copy_memory;
 
 use sdl2::rect::Rect;
@@ -13,8 +14,8 @@ use gb_emu::joypad;
 use common::{PlayerData, SpriteData};
 
 use client;
-use net::ClientDataManager;
-use interface::{self, extract, hacks, InterfaceState};
+use interface::{self, extract, hacks, InterfaceData, InterfaceState};
+use chat::ChatBox;
 use font::Font;
 
 enum GameState {
@@ -23,58 +24,67 @@ enum GameState {
     Menu,
 }
 
-pub struct Game<'a> {
-    game_state: GameState,
-    data: ClientDataManager<'a>,
-    emulator: Box<Emulator>,
-    emu_texture: Texture,
-    default_sprite: Vec<u8>,
-    font: Font,
-    fast_mode: bool,
+pub struct Game {
+    pub emulator: Box<Emulator>,
+    pub emu_texture: Texture,
+    pub default_sprite: Vec<u8>,
+    pub font: Font,
+
+    pub game_state: GameState,
+    pub interface_data: RefCell<InterfaceData>,
+    pub chat_box: ChatBox,
+    pub player_data: PlayerData,
+    pub fast_mode: bool,
 }
 
-impl<'a> Game<'a> {
-    pub fn new(data: ClientDataManager<'a>, emulator: Box<Emulator>, emu_texture: Texture,
-        default_sprite: Vec<u8>, font: Font) -> Game
+impl Game {
+    pub fn new(emulator: Box<Emulator>, emu_texture: Texture, default_sprite: Vec<u8>,
+        font: Font) -> Game
     {
         Game {
-            game_state: GameState::Emulator,
-            data: data,
             emulator: emulator,
             emu_texture: emu_texture,
             default_sprite: default_sprite,
             font: font,
+
+            game_state: GameState::Emulator,
+            interface_data: RefCell::new(InterfaceData::new()),
+            chat_box: ChatBox::new(),
+            player_data: PlayerData::new(),
             fast_mode: false,
         }
     }
 
     pub fn update(&mut self) {
-        if self.data.interface_data.borrow().state == InterfaceState::Normal {
-            let mut data = &mut self.data;
+        if self.interface_data.borrow().state == InterfaceState::Normal {
+            let interface_data = &mut self.interface_data;
             let mut emulator = &mut self.emulator;
             let emu_texture = &mut self.emu_texture;
             let default_sprite = &*self.default_sprite;
+            let player_data = &mut self.player_data;
 
             emulator.frame(
                 |cpu, mem| {
-                    hacks::sprite_check(cpu, mem, &mut *data.interface_data.borrow_mut());
-                    hacks::display_text(cpu, mem, &mut *data.interface_data.borrow_mut());
-                    hacks::sprite_update_tracker(cpu, mem, &mut *data.interface_data.borrow_mut());
+                    let interface_data = &mut *interface_data.borrow_mut();
+                    hacks::sprite_check(cpu, mem, interface_data);
+                    hacks::display_text(cpu, mem, interface_data);
+                    hacks::sprite_update_tracker(cpu, mem, interface_data);
                 },
 
                 |_, mem| {
-                    if data.interface_data.borrow().sprites_enabled() {
-                        draw_other_players(data, mem, default_sprite);
+                    let interface_data = &*interface_data.borrow();
+                    if interface_data.sprites_enabled() {
+                        draw_other_players(interface_data, player_data, mem, default_sprite);
                     }
 
                     // Copy the screen to the emulator texture
                     let _ = emu_texture.with_lock(None, |mut pixels, _| {
                         copy_memory(pixels.as_mut_slice(), &mem.gpu.framebuffer);
                     });
+
+                    *player_data = extract::player_data(mem);
                 }
             );
-
-            data.update_player_data(extract::player_data(&emulator.mem));
         }
 
     }
@@ -83,13 +93,8 @@ impl<'a> Game<'a> {
         try!(renderer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH,
             client::EMU_HEIGHT))));
 
-        self.data.chat_box.draw(renderer, &self.font, Rect::new(client::EMU_WIDTH, 0,
+        self.chat_box.draw(renderer, &self.font, Rect::new(client::EMU_WIDTH, 0,
             client::CHAT_WIDTH, client::EMU_HEIGHT))
-    }
-
-    pub fn network_update(&mut self) {
-        self.data.send_update();
-        self.data.recv_update(&mut self.emulator.mem);
     }
 
     pub fn key_down(&mut self, keycode: KeyCode) {
@@ -141,8 +146,8 @@ impl<'a> Game<'a> {
 
     fn write_to_chatbox(&mut self, keycode: KeyCode) {
         let letter = match keycode {
-            KeyCode::Return => { self.data.send_message(); return },
-            KeyCode::Backspace => { self.data.chat_box.remove_char(); return },
+            KeyCode::Return => { self.chat_box.message_ready = true; return },
+            KeyCode::Backspace => { self.chat_box.message_buffer.pop(); return },
             KeyCode::Space => ' ',
             KeyCode::A => 'a',
             KeyCode::B => 'b',
@@ -173,13 +178,14 @@ impl<'a> Game<'a> {
             _ => return,
         };
 
-        self.data.chat_box.push_char(letter);
+        self.chat_box.message_buffer.push(letter);
     }
 }
 
-fn draw_other_players(data: &ClientDataManager, mem: &mut Memory, sprite: &[u8]) {
-    let self_data = &data.last_state;
-    for player in data.interface_data.borrow().other_players.values() {
+fn draw_other_players(interface_data: &InterfaceData, self_data: &PlayerData, mem: &mut Memory,
+    sprite: &[u8])
+{
+    for player in interface_data.players.values() {
         if player.is_visible_to(self_data) {
             let (x, y) = get_player_draw_position(self_data, player);
             let (index, flags) = get_sprite_index_and_flags(player.movement_data.direction,

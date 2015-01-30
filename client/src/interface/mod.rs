@@ -35,7 +35,7 @@ pub enum NetworkRequest {
 pub struct InterfaceData {
     pub state: InterfaceState,
     pub network_request: NetworkRequest,
-    pub other_players: HashMap<u32, PlayerData>,
+    pub players: HashMap<u32, PlayerData>,
     last_interaction: u32,
     sprite_id_state: DataState,
     text_state: DataState,
@@ -48,7 +48,7 @@ impl InterfaceData {
         InterfaceData {
             state: InterfaceState::Normal,
             network_request: NetworkRequest::None,
-            other_players: HashMap::new(),
+            players: HashMap::new(),
             last_interaction: 0,
             sprite_id_state: DataState::Normal,
             text_state: DataState::Normal,

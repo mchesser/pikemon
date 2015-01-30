@@ -1,17 +1,16 @@
-use std::cell::RefCell;
+use std::mem;
 use std::thread::Thread;
 use std::sync::mpsc::{Sender, Receiver};
 use std::io::{TcpStream, BufferedReader};
 
 use rustc_serialize::json;
 
-use common::{NetworkEvent, PlayerData, PlayerId};
+use common::{NetworkEvent, MovementData, PlayerData, PlayerId};
 use common::error::{NetworkError, NetworkResult};
 
-use interface::{self, InterfaceData, NetworkRequest, InterfaceState};
+use interface::{self, NetworkRequest, InterfaceState};
 use interface::{text, extract};
-use chat::ChatBox;
-use gb_emu::mmu::Memory;
+use game::Game;
 
 pub struct NetworkManager {
     pub socket: TcpStream,
@@ -61,103 +60,128 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
     Ok(player_id)
 }
 
-pub struct ClientDataManager<'a> {
-    pub id: PlayerId,
-    pub interface_data: &'a RefCell<InterfaceData>,
-    pub last_state: PlayerData,
-    pub new_update: bool,
-    pub local_update_sender: Sender<NetworkEvent>,
-    pub global_update_receiver: Receiver<NetworkEvent>,
-    pub chat_box: ChatBox,
+
+pub struct ClientManager {
+    id: PlayerId,
+    last_state: PlayerData,
+    full_update: Option<PlayerData>,
+    movement_update: Option<MovementData>,
+    update_sender: Sender<NetworkEvent>,
+    update_receiver: Receiver<NetworkEvent>,
 }
 
-impl<'a> ClientDataManager<'a> {
-    pub fn update_player_data(&mut self, data: PlayerData) {
-        if self.last_state != data {
-            self.last_state = data;
-            self.new_update = true;
+impl ClientManager {
+    pub fn new(id: PlayerId, update_sender: Sender<NetworkEvent>,
+        update_receiver: Receiver<NetworkEvent>) -> ClientManager
+    {
+        ClientManager {
+            id: id,
+            last_state: PlayerData::new(),
+            full_update: None,
+            movement_update: None,
+            update_sender: update_sender,
+            update_receiver: update_receiver,
         }
     }
 
-    pub fn send_update(&mut self) {
-        if self.new_update {
-            // TODO: Better error handling
-            let update_data = self.last_state.clone();
-            let _ = self.local_update_sender.send(NetworkEvent::FullUpdate(self.id, update_data));
-            self.new_update = false;
+    pub fn update_player(&mut self, new_data: &PlayerData) {
+        if self.last_state.movement_data != new_data.movement_data {
+            self.last_state.movement_data = new_data.movement_data;
+            self.movement_update = Some(new_data.movement_data);
         }
 
-        match self.interface_data.borrow_mut().network_request {
+        if self.last_state != *new_data {
+            self.last_state = new_data.clone();
+            self.full_update = Some(new_data.clone());
+        }
+    }
+
+    pub fn send_update(&mut self, game: &mut Game) -> NetworkResult<()> {
+        if self.movement_update.is_some() {
+            let update_data = mem::replace(&mut self.movement_update, None).unwrap();
+            try!(self.update_sender.send(NetworkEvent::MovementUpdate(self.id, update_data)));
+        }
+
+        if self.full_update.is_some() {
+            let update_data = mem::replace(&mut self.full_update, None).unwrap();
+            try!(self.update_sender.send(NetworkEvent::FullUpdate(self.id, update_data)));
+        }
+
+        if game.chat_box.message_ready {
+            try!(self.send_message(game));
+        }
+
+        match game.interface_data.borrow().network_request {
             NetworkRequest::None => {},
             NetworkRequest::Battle(id) => {
                 println!("Requesting battle");
-                // TODO: Better error handling
-                let _ = self.local_update_sender.send(NetworkEvent::BattleDataRequest(id, self.id));
+                try!(self.update_sender.send(NetworkEvent::BattleDataRequest(id, self.id)));
             },
         }
-        self.interface_data.borrow_mut().network_request = NetworkRequest::None;
+
+        game.interface_data.borrow_mut().network_request = NetworkRequest::None;
+        Ok(())
     }
 
-    pub fn send_message(&mut self) {
-        let msg = self.chat_box.get_message_buffer();
-
-        // Add the message to our chat box
-        self.chat_box.add_message(self.last_state.name.clone(),
-            text::Encoder::new(&*msg).collect());
-
-        // Send the message to the server
-        let _ = self.local_update_sender.send(NetworkEvent::Chat(self.id, msg));
-    }
-
-    pub fn recv_update(&mut self, mem: &mut Memory) {
+    pub fn recv_update(&mut self, game: &mut Game) -> NetworkResult<()> {
+        let interface_data = &mut *game.interface_data.borrow_mut();
         loop {
-            match self.global_update_receiver.try_recv() {
-                Ok(NetworkEvent::FullUpdate(id, data)) => {
-                    self.interface_data.borrow_mut().other_players.insert(id, data);
+            match self.update_receiver.try_recv() {
+                Ok(NetworkEvent::FullUpdate(id, update_data)) => {
+                    interface_data.players.insert(id, update_data);
                 },
 
-                Ok(NetworkEvent::MovementUpdate(id, data)) => {
-                    if let Some(player) = self.interface_data.borrow_mut().other_players.get_mut(&id) {
-                        player.movement_data = data;
+                Ok(NetworkEvent::MovementUpdate(id, update_data)) => {
+                    if let Some(player) = interface_data.players.get_mut(&id) {
+                        player.movement_data = update_data;
                     }
                 },
 
                 Ok(NetworkEvent::PlayerQuit(id)) => {
                     println!("Player: {} quit.", id);
-                    self.interface_data.borrow_mut().other_players.remove(&id);
+                    interface_data.players.remove(&id);
                 },
 
                 Ok(NetworkEvent::BattleDataRequest(_, id)) => {
                     println!("Responding to battle request");
-                    let party = extract::player_party(mem);
-                    let _ = self.local_update_sender.send(NetworkEvent::BattleDataResponse(id,
-                        party));
+                    let party = extract::player_party(&game.emulator.mem);
+                    try!(self.update_sender.send(NetworkEvent::BattleDataResponse(id, party)));
                 },
 
                 Ok(NetworkEvent::BattleDataResponse(_, party)) => {
-                    self.interface_data.borrow_mut().state = InterfaceState::Normal;
-                    interface::set_battle(mem, party);
+                    interface_data.state = InterfaceState::Normal;
+                    interface::set_battle(&mut game.emulator.mem, party);
                 },
 
                 Ok(NetworkEvent::UpdateRequest) => {
                     println!("Responding to update request");
-                    // TODO: Better error handling
-                    let update_data = self.last_state.clone();
-                    let _ = self.local_update_sender.send(NetworkEvent::FullUpdate(self.id,
-                        update_data));
+                    let update_data = game.player_data.clone();
+                    try!(self.update_sender.send(NetworkEvent::FullUpdate(self.id, update_data)));
                 },
 
                 Ok(NetworkEvent::Chat(id, msg)) => {
-                    let player_name = match self.interface_data.borrow_mut().other_players.get(&id) {
+                    let player_name = match interface_data.players.get(&id) {
                         Some(player) => player.name.clone(),
                         None => text::Encoder::new("UNKNOWN").collect(),
                     };
-                    self.chat_box.add_message(player_name, text::Encoder::new(&*msg).collect());
+                    game.chat_box.add_message(player_name, text::Encoder::new(&*msg).collect());
                 },
 
                 Ok(_) => unimplemented!(),
                 _ => break,
             }
         }
+
+        Ok(())
+    }
+
+    pub fn send_message(&mut self, game: &mut Game) -> NetworkResult<()> {
+        let msg = game.chat_box.get_message_buffer();
+        let user_name = game.player_data.name.clone();
+
+        game.chat_box.add_message(user_name, text::Encoder::new(&*msg).collect());
+        try!(self.update_sender.send(NetworkEvent::Chat(self.id, msg)));
+
+        Ok(())
     }
 }

@@ -24,7 +24,7 @@ pub fn sprite_check(cpu: &mut Cpu, mem: &mut Memory, interface_data: &mut Interf
         }
 
         // Check if there are any other players that occupy this tile
-        for (id, player) in interface_data.other_players.iter() {
+        for (id, player) in interface_data.players.iter() {
             if player.movement_data.map_id == map_id && player.check_collision(x, y) {
                 // If there was a player set a sentinel value so the game thinks that there is
                 // something in the way.
