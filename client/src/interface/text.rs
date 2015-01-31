@@ -1,6 +1,5 @@
-use sdl2::render::Renderer;
+use sdl2::render::RenderDrawer;
 use sdl2::rect::Rect;
-use sdl2::SdlResult;
 
 use font::Font;
 
@@ -90,8 +89,7 @@ impl<'a> Iterator for Encoder<'a> {
 }
 
 /// Draw text, returning the total height of the text drawn
-pub fn draw_text(renderer: &Renderer, font: &Font, text: &[u8], target: &Rect) -> SdlResult<i32>
-{
+pub fn draw_text(drawer: &mut RenderDrawer, font: &Font, text: &[u8], target: &Rect) -> i32 {
     let (mut x, mut y) = (target.x, target.y);
     for &char_ in text.iter() {
         match char_ {
@@ -113,7 +111,7 @@ pub fn draw_text(renderer: &Renderer, font: &Font, text: &[u8], target: &Rect) -
 
             normal_char => {
                 // The index of normal characters in the font is their value - 0x80
-                try!(font.draw_char(renderer, (normal_char - 0x80) as i32, x, y));
+                font.draw_char(drawer, (normal_char - 0x80) as i32, x, y);
                 x += font.char_width();
             },
         }
@@ -129,5 +127,5 @@ pub fn draw_text(renderer: &Renderer, font: &Font, text: &[u8], target: &Rect) -
     }
 
     // Return the height of the text drawn
-    Ok(y - target.y + font.line_height())
+    y - target.y + font.line_height()
 }

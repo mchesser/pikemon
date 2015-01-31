@@ -1,4 +1,4 @@
-#![allow(unstable)] // This generates a lot of unnecessary warnings at the moment
+#![feature(core)]
 extern crate "rustc-serialize" as rustc_serialize;
 
 pub mod error;

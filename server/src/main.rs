@@ -1,4 +1,4 @@
-#![allow(unstable)] // This generates a lot of unnecessary warnings at the moment
+#![feature(io, std_misc)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
@@ -7,8 +7,8 @@ use rustc_serialize::json;
 
 use std::thread::Thread;
 use std::collections::HashMap;
-use std::io::{IoResult, TcpListener, TcpStream, BufferedReader};
-use std::io::{Acceptor, Listener};
+use std::old_io::{IoResult, TcpListener, TcpStream, BufferedReader};
+use std::old_io::{Acceptor, Listener};
 use std::sync::mpsc::{channel, Sender};
 
 use common::{NetworkEvent, PlayerId};

@@ -83,7 +83,7 @@ pub fn player_party(mem: &Memory) -> Party {
     }
 }
 
-pub fn font_texture(renderer: &Renderer, mem: &Memory) -> SdlResult<Texture> {
+pub fn font_texture<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Texture<'a>> {
     const BLACK: [u8; 4] = [0, 0, 0, 255];
     const WHITE: [u8; 4] = [255, 255, 255, 255];
 
@@ -143,8 +143,8 @@ const AMASK: u32 = 0xFF000000;
 
 const SDL_BYTES_PER_PIXEL: usize = 4;
 
-pub fn extract_1bpp_texture(renderer: &Renderer, mem: &Memory, bank: usize, addr: u16, width: usize,
-    height: usize, colors: [[u8; 4]; 2]) -> SdlResult<Texture>
+pub fn extract_1bpp_texture<'a>(renderer: &'a Renderer, mem: &Memory, bank: usize, addr: u16,
+    width: usize, height: usize, colors: [[u8; 4]; 2]) -> SdlResult<Texture<'a>>
 {
     let num_x_tiles = width / TILE_SIZE;
     let num_y_tiles = height / TILE_SIZE;

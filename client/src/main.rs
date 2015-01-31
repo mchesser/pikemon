@@ -1,12 +1,11 @@
-#![feature(slicing_syntax, box_syntax)]
-#![allow(unstable)] // This generates a lot of unnecessary warnings at the moment
+#![feature(box_syntax, core, std_misc, path, io, os, collections)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
 extern crate sdl2;
 extern crate gb_emu;
 
-use std::io::{File, TcpStream};
+use std::old_io::{File, TcpStream};
 use std::sync::mpsc::channel;
 
 use gb_emu::emulator::Emulator;
@@ -44,7 +43,7 @@ fn main() {
     let save_path = Path::new("Pokemon Red.sav");
 
     let save_file = Box::new(LocalSaveWrapper { path: save_path }) as Box<cart::SaveFile>;
-    emulator.load_cart(cart.as_slice(), Some(save_file));
+    emulator.load_cart(&*cart, Some(save_file));
     emulator.start();
 
     let client_manager = ClientManager::new(id, local_update_sender, global_update_receiver);

@@ -4,7 +4,7 @@ use sdl2::event::{Event, poll_event};
 use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
 use sdl2::render::{self, Renderer, RenderDriverIndex, TextureAccess};
-use sdl2::pixels::{PixelFormatFlag, Color};
+use sdl2::pixels::{PixelFormatEnum, Color};
 
 use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
@@ -37,8 +37,8 @@ pub fn run(mut client_manager: ClientManager, mut emulator: Box<Emulator>) -> Sd
     let font_texture = try!(extract::font_texture(&renderer, &mut emulator.mem));
     let font_data = Font::new(font_texture, 8, 8, FONT_SCALE);
 
-    let emu_texture = try!(renderer.create_texture(PixelFormatFlag::ARGB8888,
-        TextureAccess::Streaming, graphics::WIDTH as i32, graphics::HEIGHT as i32));
+    let emu_texture = try!(renderer.create_texture(PixelFormatEnum::ARGB8888,
+        TextureAccess::Streaming, (graphics::WIDTH as i32, graphics::HEIGHT as i32)));
 
     let mut game = Game::new(emulator, emu_texture, player_sprite, font_data);
 
@@ -48,10 +48,10 @@ pub fn run(mut client_manager: ClientManager, mut emulator: Box<Emulator>) -> Sd
     'main: loop {
         'event: loop {
             match poll_event() {
-                Event::Quit(_) => break 'main,
+                Event::Quit{..} => break 'main,
 
-                Event::KeyDown(_, _, code, _, _, _) => game.key_down(code),
-                Event::KeyUp(_, _, code, _, _, _) => game.key_up(code),
+                Event::KeyDown{ keycode: code, .. } => game.key_down(code),
+                Event::KeyUp{ keycode: code, .. } => game.key_up(code),
 
                 Event::None => break,
                 _ => continue,
@@ -70,10 +70,11 @@ pub fn run(mut client_manager: ClientManager, mut emulator: Box<Emulator>) -> Sd
             let _ = client_manager.recv_update(&mut game);
         }
 
-        try!(renderer.set_draw_color(WHITE));
-        try!(renderer.clear());
-        try!(game.render(&renderer));
-        renderer.present();
+        let mut drawer = renderer.drawer();
+        drawer.set_draw_color(WHITE);
+        drawer.clear();
+        game.render(&mut *drawer);
+        drawer.present();
     }
     Ok(())
 }

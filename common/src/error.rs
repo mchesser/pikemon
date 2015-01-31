@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::IoError;
+use std::old_io::IoError;
 use std::sync::mpsc::{SendError, RecvError};
 use std::error::{Error, FromError};
 

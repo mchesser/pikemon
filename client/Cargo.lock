@@ -5,8 +5,8 @@ dependencies = [
  "clock_ticks 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.0.0",
  "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
- "rustc-serialize 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2 0.0.19 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "rustc-serialize 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sdl2 0.0.22 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
 [[package]]
@@ -23,7 +23,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "common"
 version = "0.0.0"
 dependencies = [
- "rustc-serialize 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -33,28 +33,28 @@ source = "git+https://github.com/quvarxa/gb_emu.git#699e290bbdd96c97480ad52dbb70
 
 [[package]]
 name = "pkg-config"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustc-serialize"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
-version = "0.0.19"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#a71083c4b95a7429607263c55a3b4a692707a1fc"
+version = "0.0.22"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#f12192caf70429c183877280ba10c1acd4c5924e"
 dependencies = [
  "bitflags 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2-sys 0.0.19 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2-sys 0.0.22 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
 [[package]]
 name = "sdl2-sys"
-version = "0.0.19"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#a71083c4b95a7429607263c55a3b4a692707a1fc"
+version = "0.0.22"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#f12192caf70429c183877280ba10c1acd4c5924e"
 dependencies = [
- "pkg-config 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

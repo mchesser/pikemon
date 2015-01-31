@@ -1,7 +1,7 @@
 use std::mem;
 use std::thread::Thread;
 use std::sync::mpsc::{Sender, Receiver};
-use std::io::{TcpStream, BufferedReader};
+use std::old_io::{TcpStream, BufferedReader};
 
 use rustc_serialize::json;
 

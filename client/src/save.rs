@@ -1,5 +1,5 @@
-use std::io::fs;
-use std::io::{File, IoErrorKind};
+use std::old_io::fs;
+use std::old_io::{File, IoErrorKind};
 
 use gb_emu::cart::SaveFile;
 
@@ -18,7 +18,7 @@ impl SaveFile for LocalSaveWrapper {
         // First create a temporary file and write to that, to ensure that if an error occurs, the
         // old file is not lost.
         let tmp_path = self.path.with_extension("sav.tmp");
-        if let Err(e) = File::create(&tmp_path).write(data) {
+        if let Err(e) = File::create(&tmp_path).write_all(data) {
             println!("An error occured when writing the save file: {}", e);
             return;
         }

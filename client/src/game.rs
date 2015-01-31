@@ -2,9 +2,8 @@ use std::cell::RefCell;
 use std::slice::bytes::copy_memory;
 
 use sdl2::rect::Rect;
-use sdl2::SdlResult;
 use sdl2::keycode::KeyCode;
-use sdl2::render::{Renderer, Texture};
+use sdl2::render::{RenderDrawer, Texture};
 
 use gb_emu::mmu::Memory;
 use gb_emu::emulator::Emulator;
@@ -24,11 +23,11 @@ enum GameState {
     Menu,
 }
 
-pub struct Game {
+pub struct Game<'a> {
     pub emulator: Box<Emulator>,
-    pub emu_texture: Texture,
+    pub emu_texture: Texture<'a>,
     pub default_sprite: Vec<u8>,
-    pub font: Font,
+    pub font: Font<'a>,
 
     pub game_state: GameState,
     pub interface_data: RefCell<InterfaceData>,
@@ -37,9 +36,9 @@ pub struct Game {
     pub fast_mode: bool,
 }
 
-impl Game {
-    pub fn new(emulator: Box<Emulator>, emu_texture: Texture, default_sprite: Vec<u8>,
-        font: Font) -> Game
+impl<'a> Game<'a> {
+    pub fn new(emulator: Box<Emulator>, emu_texture: Texture<'a>, default_sprite: Vec<u8>,
+        font: Font<'a>) -> Game<'a>
     {
         Game {
             emulator: emulator,
@@ -79,7 +78,7 @@ impl Game {
 
                     // Copy the screen to the emulator texture
                     let _ = emu_texture.with_lock(None, |mut pixels, _| {
-                        copy_memory(pixels.as_mut_slice(), &mem.gpu.framebuffer);
+                        copy_memory(&mut *pixels, &mem.gpu.framebuffer);
                     });
 
                     *player_data = extract::player_data(mem);
@@ -89,12 +88,12 @@ impl Game {
 
     }
 
-    pub fn render(&self, renderer: &Renderer) -> SdlResult<()> {
-        try!(renderer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH,
-            client::EMU_HEIGHT))));
+    pub fn render(&self, drawer: &mut RenderDrawer) {
+        drawer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH,
+            client::EMU_HEIGHT)));
 
-        self.chat_box.draw(renderer, &self.font, Rect::new(client::EMU_WIDTH, 0,
-            client::CHAT_WIDTH, client::EMU_HEIGHT))
+        self.chat_box.draw(drawer, &self.font, Rect::new(client::EMU_WIDTH, 0,
+            client::CHAT_WIDTH, client::EMU_HEIGHT));
     }
 
     pub fn key_down(&mut self, keycode: KeyCode) {
