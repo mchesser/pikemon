@@ -6,7 +6,7 @@ dependencies = [
  "common 0.0.0",
  "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
  "rustc-serialize 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2 0.0.22 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2 0.0.23 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
 [[package]]
@@ -29,7 +29,7 @@ dependencies = [
 [[package]]
 name = "gb_emu"
 version = "0.0.1"
-source = "git+https://github.com/quvarxa/gb_emu.git#699e290bbdd96c97480ad52dbb709c97537b726f"
+source = "git+https://github.com/quvarxa/gb_emu.git#653afbe0036abf420ecc4f08b93c035fa6a89020"
 
 [[package]]
 name = "pkg-config"
@@ -43,17 +43,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
-version = "0.0.22"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#f12192caf70429c183877280ba10c1acd4c5924e"
+version = "0.0.23"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#140bf711e8dd1feb20f5fcbab3aab238535bd1e8"
 dependencies = [
  "bitflags 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2-sys 0.0.22 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "sdl2-sys 0.0.23 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
 [[package]]
 name = "sdl2-sys"
-version = "0.0.22"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#f12192caf70429c183877280ba10c1acd4c5924e"
+version = "0.0.23"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#140bf711e8dd1feb20f5fcbab3aab238535bd1e8"
 dependencies = [
  "pkg-config 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

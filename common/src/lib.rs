@@ -19,7 +19,7 @@ pub enum NetworkEvent {
     ServerFailure,
 }
 
-#[derive(Clone, Show, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct PlayerData {
     pub name: Vec<u8>,
     // pub sprite: Vec<u8>, -- TODO: allow players to choose their own sprite
@@ -47,12 +47,20 @@ impl PlayerData {
     }
 }
 
-#[derive(Copy, Clone, Show, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, FromPrimitive, RustcEncodable, RustcDecodable)]
+pub enum Direction {
+    Down = 0x0,
+    Up = 0x4,
+    Left = 0x8,
+    Right = 0xC
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct MovementData {
     pub map_id: u8,
     pub map_x: u8,
     pub map_y: u8,
-    pub direction: u8,
+    pub direction: Direction,
     pub walk_counter: u8,
 }
 
@@ -62,7 +70,7 @@ impl MovementData {
             map_id: 0,
             map_x: 0,
             map_y: 0,
-            direction: 0,
+            direction: Direction::Down,
             walk_counter: 0,
         }
     }
@@ -71,11 +79,10 @@ impl MovementData {
     pub fn move_target(&self) -> (u8, u8) {
         if self.walk_counter != 0 {
             match self.direction {
-                0  => (self.map_x, self.map_y + 1),
-                4  => (self.map_x, self.map_y - 1),
-                8  => (self.map_x - 1, self.map_y),
-                12 => (self.map_x + 1, self.map_y),
-                _  => (self.map_x, self.map_y),
+                Direction::Down  => (self.map_x, self.map_y + 1),
+                Direction::Up    => (self.map_x, self.map_y - 1),
+                Direction::Left  => (self.map_x - 1, self.map_y),
+                Direction::Right => (self.map_x + 1, self.map_y),
             }
         }
         else {
@@ -85,6 +92,7 @@ impl MovementData {
 }
 
 /// The sprite data for a 16x16 sprite
+#[derive(Copy)]
 pub struct SpriteData {
     pub x: isize,
     pub y: isize,

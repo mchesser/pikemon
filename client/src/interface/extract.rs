@@ -1,4 +1,5 @@
 use std::iter;
+use std::num::from_u8;
 
 use sdl2::SdlResult;
 use sdl2::surface::Surface;
@@ -7,7 +8,7 @@ use sdl2::render::{Renderer, Texture};
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
-use common::{PlayerData, MovementData};
+use common::{PlayerData, MovementData, Direction};
 use common::data::{Party, PokemonData};
 
 use interface::offsets;
@@ -18,7 +19,7 @@ fn movement_data(mem: &Memory) -> MovementData {
         map_id: mem.lb(offsets::MAP_ID),
         map_x: mem.lb(offsets::MAP_X),
         map_y: mem.lb(offsets::MAP_Y),
-        direction: mem.lb(offsets::PLAYER_DIR),
+        direction: from_u8(mem.lb(offsets::PLAYER_DIR)).unwrap_or(Direction::Down),
         walk_counter: mem.lb(offsets::WALK_COUNTER),
     }
 }

@@ -10,7 +10,7 @@ use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
 use gb_emu::joypad;
 
-use common::{PlayerData, SpriteData};
+use common::{PlayerData, SpriteData, Direction};
 
 use client;
 use interface::{self, extract, hacks, InterfaceData, InterfaceState};
@@ -187,8 +187,7 @@ fn draw_other_players(interface_data: &InterfaceData, self_data: &PlayerData, me
     for player in interface_data.players.values() {
         if player.is_visible_to(self_data) {
             let (x, y) = get_player_draw_position(self_data, player);
-            let (index, flags) = get_sprite_index_and_flags(player.movement_data.direction,
-                player.movement_data.walk_counter);
+            let (index, flags) = get_sprite_index_and_flags(player);
             let sprite_data = SpriteData {
                 x: x as isize,
                 y: y as isize,
@@ -222,28 +221,25 @@ fn get_player_position(player: &PlayerData) -> (i32, i32) {
     let offset = if ticks == 0 { 0 } else { (8 - ticks) * 2 } as i32;
 
     match player.movement_data.direction {
-        0  => (x, y + offset),
-        4  => (x, y - offset),
-        8  => (x - offset, y),
-        12 => (x + offset, y),
-
-        _  => (x, y), // Usually unreachable
+        Direction::Down  => (x, y + offset),
+        Direction::Up    => (x, y - offset),
+        Direction::Left  => (x - offset, y),
+        Direction::Right => (x + offset, y),
     }
 }
 
-fn get_sprite_index_and_flags(direction: u8, walk_counter: u8) -> (isize, u8) {
-    let (mut index, mut flags) = match direction {
-        0  => (0, 0x00),    // Down
-        4  => (1, 0x00),    // Up
-        8  => (2, 0x00),    // Right
-        12 => (2, 0x20),    // Left
-
-        _  => (0, 0x00),    // Usually unreachable
+//fn get_sprite_index_and_flags(direction: u8, walk_counter: u8) -> (isize, u8) {
+fn get_sprite_index_and_flags(player: &PlayerData) -> (isize, u8) {
+    let (mut index, mut flags) = match player.movement_data.direction {
+        Direction::Down  => (0, 0x00),
+        Direction::Up    => (1, 0x00),
+        Direction::Left  => (2, 0x00),
+        Direction::Right => (2, 0x20),
     };
 
     flags |= 0x80;
 
-    index += match walk_counter / 4 {
+    index += match player.movement_data.walk_counter / 4 {
         0 => 0,
         1 => 3,
 
