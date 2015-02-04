@@ -228,7 +228,6 @@ fn get_player_position(player: &PlayerData) -> (i32, i32) {
     }
 }
 
-//fn get_sprite_index_and_flags(direction: u8, walk_counter: u8) -> (isize, u8) {
 fn get_sprite_index_and_flags(player: &PlayerData) -> (isize, u8) {
     let (mut index, mut flags) = match player.movement_data.direction {
         Direction::Down  => (0, 0x00),
