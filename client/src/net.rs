@@ -144,13 +144,16 @@ impl ClientManager {
 
                 Ok(NetworkEvent::BattleDataRequest(_, id)) => {
                     println!("Responding to battle request");
-                    let party = extract::player_party(&game.emulator.mem);
-                    try!(self.update_sender.send(NetworkEvent::BattleDataResponse(id, party)));
+                    let data = extract::battle_data(&game.emulator.mem);
+                    try!(self.update_sender.send(NetworkEvent::BattleDataResponse(id, data)));
                 },
 
-                Ok(NetworkEvent::BattleDataResponse(_, party)) => {
+                Ok(NetworkEvent::BattleDataResponse(_, battle_data)) => {
                     interface_data.state = InterfaceState::Normal;
-                    interface::set_battle(&mut game.emulator.mem, party);
+                    let enemy_id = interface_data.last_interaction;
+                    if let Some(enemy) = interface_data.players.get(&enemy_id) {
+                        interface::set_battle(&mut game.emulator.mem, enemy, battle_data);
+                    }
                 },
 
                 Ok(NetworkEvent::UpdateRequest) => {

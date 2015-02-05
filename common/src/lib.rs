@@ -15,7 +15,7 @@ pub enum NetworkEvent {
     PlayerQuit(PlayerId),
     Chat(PlayerId, String),
     BattleDataRequest(PlayerId, PlayerId),
-    BattleDataResponse(PlayerId, data::Party),
+    BattleDataResponse(PlayerId, data::PlayerBattleData),
     ServerFailure,
 }
 

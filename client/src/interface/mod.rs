@@ -6,7 +6,7 @@ use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
 use common::{SpriteData, PlayerData, PlayerId};
-use common::data::{self, Party};
+use common::data::{self, Party, PlayerBattleData};
 
 pub mod offsets;
 pub mod values;
@@ -36,7 +36,7 @@ pub struct InterfaceData {
     pub state: InterfaceState,
     pub network_request: NetworkRequest,
     pub players: HashMap<u32, PlayerData>,
-    last_interaction: u32,
+    pub last_interaction: u32,
     sprite_id_state: DataState,
     text_state: DataState,
     current_message: RingBuf<u8>,
@@ -76,7 +76,10 @@ pub fn get_tile_id_addr(x: u8, y: u8) -> u16 {
     offsets::TILE_MAP + 20 * y_offset + x_offset
 }
 
-fn load_party(party: data::Party, mem: &mut Memory) {
+
+/// Loads a target party into the OAK trainer data slot.
+#[allow(dead_code)]
+fn load_trainer_party(party: data::Party, mem: &mut Memory) {
     let pokemon = party.pokemon;
     let pokemon_array = [pokemon.0, pokemon.1, pokemon.2, pokemon.3, pokemon.4, pokemon.5];
 
@@ -93,15 +96,24 @@ fn load_party(party: data::Party, mem: &mut Memory) {
     mem.cart.rom[bank][addr] = 0;
 }
 
-// A temporary method to set a battle. In future we probably want to do more of the setup manually
-// so that we can do things like set the pokemon moves, EVs, DVs etc.
-pub fn set_battle(mem: &mut Memory, party: Party) {
+pub fn set_battle(mem: &mut Memory, enemy: &PlayerData, battle_data: PlayerBattleData) {
     mem.sb(offsets::BATTLE_TYPE, values::BattleType::Normal as u8);
     mem.sb(offsets::ACTIVE_BATTLE, values::ActiveBattle::Trainer as u8);
-    mem.sb(offsets::TRAINER_NUM, 1);
+    mem.sb(offsets::IS_LINK_BATTLE, values::TRUE);
     mem.sb(offsets::CURRRENT_OPPONENT, values::TrainerClass::ProfOak as u8 + values::TRAINER_TAG);
 
-    load_party(party, mem);
+    let mut offset = offsets::ENEMY_BATTLE_DATA_START;
+    for &val in battle_data.data.iter() {
+        mem.sb(offset, val);
+        offset += 1;
+    }
+
+    offset = offsets::ENEMY_NAME_START;
+    for &val in enemy.name.iter() {
+        mem.sb(offset, val);
+        offset += 1;
+    }
+    mem.sb(offset, text::special::TERMINATOR);
 }
 
 /// Render a 16x16 sprite

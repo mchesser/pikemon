@@ -9,7 +9,7 @@ use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
 use common::{PlayerData, MovementData, Direction};
-use common::data::{Party, PokemonData};
+use common::data::{Party, BATTLE_DATA_SIZE, PlayerBattleData, PokemonData};
 
 use interface::offsets;
 use interface::text;
@@ -39,6 +39,13 @@ pub fn player_data(mem: &Memory) -> PlayerData {
     PlayerData {
         name: name,
         movement_data: movement_data(mem),
+    }
+}
+
+pub fn battle_data(mem: &Memory) -> PlayerBattleData {
+    let offset = offsets::PLAYER_BATTLE_DATA_START;
+    PlayerBattleData {
+        data: (0..BATTLE_DATA_SIZE as u16).map(|i| mem.lb(offset + i)).collect(),
     }
 }
 
@@ -72,6 +79,9 @@ fn pokemon_data(mem: &Memory, addr: u16) -> PokemonData {
     }
 }
 
+// Currently this has been changed to use a more specific method, however we may want to use this
+// for other things in the future. (e.g. server trainers)
+#[allow(dead_code)]
 pub fn player_party(mem: &Memory) -> Party {
     Party {
         num_pokemon: mem.lb(offsets::PARTY_COUNT),

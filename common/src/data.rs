@@ -57,6 +57,14 @@ pub struct Party {
     pub pokemon: (PokemonData, PokemonData, PokemonData, PokemonData, PokemonData, PokemonData),
 }
 
+pub const BATTLE_DATA_SIZE: usize = 0x194;
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct PlayerBattleData {
+    // Should be [u8; BATTLE_DATA_SIZE], but needs to be a Vec to be encodable
+    // (due to rust limitations)
+    pub data: Vec<u8>,
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 #[allow(missing_copy_implementations)]
 pub struct PokemonData {

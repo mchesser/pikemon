@@ -69,7 +69,12 @@ pub const IS_LINK_BATTLE: u16 = 0xD12B;
 pub const PROF_OAK_DATA_ADDR: u16 = 0x621D;
 pub const PROF_OAK_DATA_BANK: usize = 0xE;
 
-// Addresses for party data
+// Addresses for battle data
+pub const PLAYER_BATTLE_DATA_START: u16 = 0xD163;
+pub const ENEMY_BATTLE_DATA_START: u16 = 0xD89C;
+pub const ENEMY_NAME_START: u16 = 0xD887;
+
+// Addresses for specific party data
 pub const PARTY_COUNT: u16 = 0xD163;
 pub const PARTY_POKE_1: u16 = 0xD16B;
 pub const PARTY_POKE_2: u16 = 0xD197;
