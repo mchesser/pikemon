@@ -91,7 +91,7 @@ impl<'a> Iterator for Encoder<'a> {
 /// Draw text, returning the total height of the text drawn
 pub fn draw_text(drawer: &mut RenderDrawer, font: &Font, text: &[u8], target: &Rect) -> i32 {
     let (mut x, mut y) = (target.x, target.y);
-    for &char_ in text.iter() {
+    for &char_ in text {
         match char_ {
             // These are all control characters, and so do not matter when we are manually rendering
             // the text

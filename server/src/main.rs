@@ -1,4 +1,4 @@
-#![feature(io, std_misc)]
+#![feature(core, io, std_misc)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
@@ -39,7 +39,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                     NetworkEvent::FullUpdate(sender_id, _) |
                     NetworkEvent::MovementUpdate(sender_id, _) |
                     NetworkEvent::Chat(sender_id, _) => {
-                        for (&client_id, client_stream) in clients.iter_mut() {
+                        for (&client_id, client_stream) in &mut clients {
                             if client_id != sender_id {
                                 try!(send_to_client(client_stream, &message));
                             }
@@ -49,7 +49,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                     NetworkEvent::PlayerQuit(id) => {
                         clients.remove(&id);
                         println!("Player: {} disconnected", id);
-                        for (_, client_stream) in clients.iter_mut() {
+                        for (_, client_stream) in &mut clients {
                             try!(send_to_client(client_stream, &message));
                         }
                     },
@@ -70,7 +70,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                 clients.insert(id, sender);
 
                 // Tell connected clients that they need to send an update to the new client
-                for (_, client_stream) in clients.iter_mut() {
+                for (_, client_stream) in &mut clients {
                     try!(send_to_client(client_stream, &NetworkEvent::UpdateRequest));
                 }
             }
@@ -80,7 +80,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
 
 fn send_to_client(client_stream: &mut TcpStream, message: &NetworkEvent) -> IoResult<()> {
     let encoded_message = json::encode(&message).unwrap();
-    try!(client_stream.write_str(&*encoded_message));
+    try!(client_stream.write_str(&encoded_message));
     client_stream.write_char('\n')
 }
 
@@ -119,7 +119,7 @@ fn client_handler(client: Client) -> NetworkResult<()> {
     loop {
         match client_stream.read_line() {
             Ok(data) => {
-                let packet = json::decode(&*data).unwrap();
+                let packet = json::decode(&data).unwrap();
                 try!(client.server_sender.send(packet));
             },
 

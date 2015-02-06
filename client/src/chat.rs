@@ -43,14 +43,14 @@ impl ChatBox {
         let msg_padding = 2 * font.char_width();
 
         // Draw the text that the player is currently typing
-        let encoded_buffer: Vec<_> = text::Encoder::new(&*self.message_buffer).collect();
-        y += draw_text(drawer, font, &*encoded_buffer, &rect);
+        let encoded_buffer: Vec<_> = text::Encoder::new(&self.message_buffer).collect();
+        y += draw_text(drawer, font, &encoded_buffer, &rect);
 
         for message in self.messages.iter().rev() {
-            y += draw_text(drawer, font, &*message.user_name,
+            y += draw_text(drawer, font, &message.user_name,
                 &Rect::new(rect.x, y, rect.w, rect.h));
 
-            y += draw_text(drawer, font, &*message.data,
+            y += draw_text(drawer, font, &message.data,
                 &Rect::new(rect.x + msg_padding, y, rect.w - msg_padding, rect.h));
 
             y += font.line_height() / 2;

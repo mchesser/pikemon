@@ -22,7 +22,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
     let mut receiver_socket = BufferedReader::new(network_manager.socket.clone());
 
     let join_line = try!(receiver_socket.read_line());
-    let player_id = match json::decode(&*join_line) {
+    let player_id = match json::decode(&join_line) {
         Ok(NetworkEvent::PlayerJoin(id)) => id,
         _ => return Err(NetworkError::DecodeError),
     };
@@ -32,7 +32,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
         loop {
             match receiver_socket.read_line() {
                 Ok(data) => {
-                    let packet = json::decode(&*data).unwrap();
+                    let packet = json::decode(&data).unwrap();
                     // TODO: better error handling
                     let _ = global_update_sender.send(packet);
                 },
@@ -52,7 +52,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
             let packet = json::encode(&local_update_receiver.recv().unwrap()).unwrap();
 
             // TODO: better error handling
-            let _ = sender_socket.write_str(&*packet);
+            let _ = sender_socket.write_str(&packet);
             let _ = sender_socket.write_char('\n');
         }
     });
@@ -124,7 +124,7 @@ impl ClientManager {
     }
 
     pub fn recv_update(&mut self, game: &mut Game) -> NetworkResult<()> {
-        let interface_data = &mut *game.interface_data.borrow_mut();
+        let interface_data = &mut game.interface_data.borrow_mut();
         loop {
             match self.update_receiver.try_recv() {
                 Ok(NetworkEvent::FullUpdate(id, update_data)) => {
@@ -182,7 +182,7 @@ impl ClientManager {
         let msg = game.chat_box.get_message_buffer();
         let user_name = game.player_data.name.clone();
 
-        game.chat_box.add_message(user_name, text::Encoder::new(&*msg).collect());
+        game.chat_box.add_message(user_name, text::Encoder::new(&msg).collect());
         try!(self.update_sender.send(NetworkEvent::Chat(self.id, msg)));
 
         Ok(())

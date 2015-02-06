@@ -59,26 +59,26 @@ impl<'a> Game<'a> {
             let interface_data = &mut self.interface_data;
             let mut emulator = &mut self.emulator;
             let emu_texture = &mut self.emu_texture;
-            let default_sprite = &*self.default_sprite;
+            let default_sprite = &self.default_sprite;
             let player_data = &mut self.player_data;
 
             emulator.frame(
                 |cpu, mem| {
-                    let interface_data = &mut *interface_data.borrow_mut();
+                    let interface_data = &mut interface_data.borrow_mut();
                     hacks::sprite_check(cpu, mem, interface_data);
                     hacks::display_text(cpu, mem, interface_data);
                     hacks::sprite_update_tracker(cpu, mem, interface_data);
                 },
 
                 |_, mem| {
-                    let interface_data = &*interface_data.borrow();
+                    let interface_data = &interface_data.borrow();
                     if interface_data.sprites_enabled() {
                         draw_other_players(interface_data, player_data, mem, default_sprite);
                     }
 
                     // Copy the screen to the emulator texture
                     let _ = emu_texture.with_lock(None, |mut pixels, _| {
-                        copy_memory(&mut *pixels, &mem.gpu.framebuffer);
+                        copy_memory(&mut pixels, &mem.gpu.framebuffer);
                     });
 
                     *player_data = extract::player_data(mem);

@@ -166,11 +166,11 @@ pub fn extract_1bpp_texture<'a>(renderer: &'a Renderer, mem: &Memory, bank: usiz
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_y < num_y_tiles {
-        for y in (0..8us) {
+        for y in (0..8) {
             let color_row = mem.cart.rom[bank][sprite_offset];
             sprite_offset += 1;
 
-            for x in (0..8us) {
+            for x in (0..8) {
                 // Compute the offset of where to place this pixel in the output buffer
                 let offset = (((tile_x * TILE_SIZE) + x) +
                     ((tile_y * TILE_SIZE) + y) * width) * SDL_BYTES_PER_PIXEL;
@@ -198,7 +198,7 @@ pub fn extract_1bpp_texture<'a>(renderer: &'a Renderer, mem: &Memory, bank: usiz
         }
     }
 
-    let surface = try!(Surface::from_data(&mut *output_buffer, width as i32, height as i32, 32,
+    let surface = try!(Surface::from_data(&mut output_buffer, width as i32, height as i32, 32,
         (width * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
     renderer.create_texture_from_surface(&surface)
 }

@@ -1,4 +1,4 @@
-#![feature(box_syntax, core, std_misc, path, io, os, collections)]
+#![feature(box_syntax, core, std_misc, path, os, io, env, collections)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
@@ -24,8 +24,16 @@ mod interface;
 mod save;
 
 fn main() {
-    let ip_addr = &*std::os::args()[1];
-    let socket = TcpStream::connect((ip_addr, 8080)).unwrap();
+    let args = std::env::args();
+
+    let socket = match args.skip(1).next() {
+        Some(arg) => {
+            let ip_addr = arg.into_string().unwrap();
+            TcpStream::connect((&*ip_addr, 8080)).unwrap()
+        },
+        // Assume localhost if there was no argument specified
+        None => TcpStream::connect(("localhost", 8080)).unwrap(),
+    };
 
     let (local_update_sender, local_update_receiver) = channel();
     let (global_update_sender, global_update_receiver) = channel();
@@ -43,7 +51,7 @@ fn main() {
     let save_path = Path::new("Pokemon Red.sav");
 
     let save_file = Box::new(LocalSaveWrapper { path: save_path }) as Box<cart::SaveFile>;
-    emulator.load_cart(&*cart, Some(save_file));
+    emulator.load_cart(&cart, Some(save_file));
     emulator.start();
 
     let client_manager = ClientManager::new(id, local_update_sender, global_update_receiver);

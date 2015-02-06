@@ -73,7 +73,7 @@ pub fn run(mut client_manager: ClientManager, mut emulator: Box<Emulator>) -> Sd
         let mut drawer = renderer.drawer();
         drawer.set_draw_color(WHITE);
         drawer.clear();
-        game.render(&mut *drawer);
+        game.render(&mut drawer);
         drawer.present();
     }
     Ok(())
