@@ -5,6 +5,7 @@ use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
 use sdl2::render::{self, Renderer, RenderDriverIndex, TextureAccess};
 use sdl2::pixels::{PixelFormatEnum, Color};
+use sdl2::keycode::KeyCode;
 
 use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
@@ -45,20 +46,28 @@ pub fn run(mut client_manager: ClientManager, mut emulator: Box<Emulator>) -> Sd
     let mut emulator_timer = Timer::new();
     let mut network_timer = Timer::new();
 
+    let mut fast_mode = false;
+
     'main: loop {
         'event: loop {
             match poll_event() {
                 Event::Quit{..} => break 'main,
 
-                Event::KeyDown{ keycode: code, .. } => game.key_down(code),
-                Event::KeyUp{ keycode: code, .. } => game.key_up(code),
+                Event::KeyDown{ keycode: code, .. } => {
+                    game.key_down(code);
+                    if code == KeyCode::Space { fast_mode = true; };
+                },
+                Event::KeyUp{ keycode: code, .. } => {
+                    game.key_up(code);
+                    if code == KeyCode::Space { fast_mode = false; };
+                }
 
                 Event::None => break,
                 _ => continue,
             }
         }
 
-        if emulator_timer.elapsed_seconds() >= 1.0 / 60.0 {
+        if fast_mode || emulator_timer.elapsed_seconds() >= 1.0 / 60.0 {
             emulator_timer.reset();
             game.update();
         }
