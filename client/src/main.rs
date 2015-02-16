@@ -1,4 +1,4 @@
-#![feature(box_syntax, core, std_misc, path, os, io, env, collections)]
+#![feature(core, box_syntax, std_misc, path, io, env, collections)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
@@ -27,10 +27,7 @@ fn main() {
     let args = std::env::args();
 
     let socket = match args.skip(1).next() {
-        Some(arg) => {
-            let ip_addr = arg.into_string().unwrap();
-            TcpStream::connect((&*ip_addr, 8080)).unwrap()
-        },
+        Some(ip_addr) => TcpStream::connect((&*ip_addr, 8080)).unwrap(),
         // Assume localhost if there was no argument specified
         None => TcpStream::connect(("localhost", 8080)).unwrap(),
     };
