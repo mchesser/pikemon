@@ -1,4 +1,9 @@
-//! Module for interfacing with the emulator
+#![feature(collections, core)]
+//! Crate for interfacing with the emulator
+extern crate common;
+extern crate gb_emu;
+extern crate sdl2;
+
 use std::collections::VecDeque;
 use std::collections::HashMap;
 
@@ -78,8 +83,7 @@ pub fn get_tile_id_addr(x: u8, y: u8) -> u16 {
 
 
 /// Loads a target party into the OAK trainer data slot.
-#[allow(dead_code)]
-fn load_trainer_party(party: data::Party, mem: &mut Memory) {
+pub fn load_trainer_party(party: data::Party, mem: &mut Memory) {
     let pokemon = party.pokemon;
     let pokemon_array = [pokemon.0, pokemon.1, pokemon.2, pokemon.3, pokemon.4, pokemon.5];
 

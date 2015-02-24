@@ -3,8 +3,8 @@ use std::mem;
 use sdl2::render::RenderDrawer;
 use sdl2::rect::Rect;
 
-use interface::text::{self, draw_text};
-use font::Font;
+use interface::text;
+use font::{Font, draw_text};
 
 struct Message {
     user_name: Vec<u8>,

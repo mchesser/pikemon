@@ -5,6 +5,7 @@ dependencies = [
  "clock_ticks 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.0.0",
  "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
+ "interface 0.0.0",
  "rustc-serialize 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sdl2 0.0.28 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
@@ -30,6 +31,15 @@ dependencies = [
 name = "gb_emu"
 version = "0.0.1"
 source = "git+https://github.com/quvarxa/gb_emu.git#7d6c0659b96ca7d9b84bde2d5c88929c683ac5af"
+
+[[package]]
+name = "interface"
+version = "0.0.0"
+dependencies = [
+ "common 0.0.0",
+ "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
+ "sdl2 0.0.28 (git+https://github.com/AngryLawyer/rust-sdl2)",
+]
 
 [[package]]
 name = "libc"

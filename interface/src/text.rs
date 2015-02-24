@@ -1,11 +1,4 @@
-use sdl2::render::RenderDrawer;
-use sdl2::rect::Rect;
-
-use font::Font;
-
 pub mod special {
-    #![allow(dead_code)]
-
     /// Start a text section
     pub const TEXT_START: u8 = 0x00;
 
@@ -86,46 +79,4 @@ impl<'a> Iterator for Encoder<'a> {
 
         None
     }
-}
-
-/// Draw text, returning the total height of the text drawn
-pub fn draw_text(drawer: &mut RenderDrawer, font: &Font, text: &[u8], target: &Rect) -> i32 {
-    let (mut x, mut y) = (target.x, target.y);
-    for &char_ in text {
-        match char_ {
-            // These are all control characters, and so do not matter when we are manually rendering
-            // the text
-            special::TEXT_START |
-            special::SCROLL_LINE |
-            special::END_MSG |
-            special::END_PROMPT => {},
-
-            special::SPACE => x += font.char_width(),
-
-            special::LINE_DOWN => {
-                x = target.x;
-                y += font.line_height();
-            },
-
-            special::TERMINATOR => break,
-
-            normal_char => {
-                // The index of normal characters in the font is their value - 0x80
-                font.draw_char(drawer, (normal_char - 0x80) as i32, x, y);
-                x += font.char_width();
-            },
-        }
-
-        // Check for wrapping
-        if x - target.x + font.char_width() > target.w {
-            x = target.x;
-            y += font.line_height();
-        }
-        if y - target.y + font.line_height() > target.h {
-            break;
-        }
-    }
-
-    // Return the height of the text drawn
-    y - target.y + font.line_height()
 }

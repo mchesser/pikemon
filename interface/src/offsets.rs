@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 // Player positional data
 pub const MAP_ID: u16 = 0xD35E;
 pub const MAP_Y: u16 = 0xD361;

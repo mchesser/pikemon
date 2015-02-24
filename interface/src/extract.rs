@@ -11,8 +11,8 @@ use gb_emu::graphics;
 use common::{PlayerData, MovementData, Direction};
 use common::data::{Party, BATTLE_DATA_SIZE, PlayerBattleData, PokemonData};
 
-use interface::offsets;
-use interface::text;
+use super::offsets;
+use super::text;
 
 fn movement_data(mem: &Memory) -> MovementData {
     MovementData {
@@ -81,7 +81,6 @@ fn pokemon_data(mem: &Memory, addr: u16) -> PokemonData {
 
 // Currently this has been changed to use a more specific method, however we may want to use this
 // for other things in the future. (e.g. server trainers)
-#[allow(dead_code)]
 pub fn player_party(mem: &Memory) -> Party {
     Party {
         num_pokemon: mem.lb(offsets::PARTY_COUNT),

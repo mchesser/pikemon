@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 pub const FALSE: u8 = 0;
 pub const TRUE: u8 = 1;
 

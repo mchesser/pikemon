@@ -1,7 +1,7 @@
 use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
 
-use interface::{InterfaceData, InterfaceState, DataState, NetworkRequest, offsets, text};
+use super::{InterfaceData, InterfaceState, DataState, NetworkRequest, offsets, text};
 
 pub fn sprite_check(cpu: &mut Cpu, mem: &mut Memory, interface_data: &mut InterfaceData) {
     if cpu.pc == offsets::OVERWORLD_LOOP_START {

@@ -1,23 +1,16 @@
 [package]
-name = "pikemon_client"
+name = "interface"
 version = "0.0.0"
 authors = ["Michael Chesser"]
 
-[[bin]]
-name = "pikemon_client"
+[lib]
+name = "interface"
 
 [dependencies.common]
 path = "../common"
-
-[dependencies.interface]
-path = "../interface"
 
 [dependencies.gb_emu]
 git = "https://github.com/quvarxa/gb_emu.git"
 
 [dependencies.sdl2]
 git = "https://github.com/AngryLawyer/rust-sdl2"
-
-[dependencies]
-rustc-serialize = "*"
-clock_ticks = "*"

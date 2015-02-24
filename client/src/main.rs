@@ -1,6 +1,7 @@
-#![feature(core, box_syntax, old_path, old_io, env, collections)]
+#![feature(core, box_syntax, old_path, old_io, env)]
 
 extern crate "rustc-serialize" as rustc_serialize;
+extern crate interface;
 extern crate common;
 extern crate sdl2;
 extern crate gb_emu;
@@ -20,7 +21,6 @@ mod timer;
 mod net;
 mod font;
 mod chat;
-mod interface;
 mod save;
 
 fn main() {
