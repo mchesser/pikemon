@@ -5,6 +5,7 @@ use sdl2::rect::Rect;
 use sdl2::keycode::KeyCode;
 use sdl2::render::{RenderDrawer, Texture};
 
+use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
 use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
@@ -56,34 +57,39 @@ impl<'a> Game<'a> {
 
     pub fn update(&mut self) {
         if self.interface_data.borrow().state == InterfaceState::Normal {
+            // Individually borrow elements of self that we need so that we pass Rust's borrow
+            // checker. (Hopefully we won't need to do this in the future)
             let interface_data = &mut self.interface_data;
-            let mut emulator = &mut self.emulator;
-            let emu_texture = &mut self.emu_texture;
             let default_sprite = &self.default_sprite;
             let player_data = &mut self.player_data;
+            let emu_texture = &mut self.emu_texture;
+            let emulator = &mut self.emulator;
 
-            emulator.frame(
-                |cpu, mem| {
-                    let interface_data = &mut interface_data.borrow_mut();
-                    hacks::sprite_check(cpu, mem, interface_data);
-                    hacks::display_text(cpu, mem, interface_data);
-                    hacks::sprite_update_tracker(cpu, mem, interface_data);
-                },
+            // After each tick we run all the hacks on the game. Most of the hacks do not actually
+            // do anything for most of the cycles but wait for the program to reach a certain point.
+            let on_tick = |cpu: &mut Cpu, mem: &mut Memory| {
+                let interface_data = &mut interface_data.borrow_mut();
+                hacks::sprite_check(cpu, mem, interface_data);
+                hacks::display_text(cpu, mem, interface_data);
+                hacks::sprite_update_tracker(cpu, mem, interface_data);
+            };
 
-                |_, mem| {
-                    let interface_data = &interface_data.borrow();
-                    if interface_data.sprites_enabled() {
-                        draw_other_players(interface_data, player_data, mem, default_sprite);
-                    }
-
-                    // Copy the screen to the emulator texture
-                    let _ = emu_texture.with_lock(None, |mut pixels, _| {
-                        copy_memory(&mut pixels, &mem.gpu.framebuffer);
-                    });
-
-                    *player_data = extract::player_data(mem);
+            // On each vblank we draw other players to the screen and copy the internal framebuffer
+            // to a texture. It is important do this during the vblank period to ensure that we
+            // don't get partially redrawn lines affecting the result.
+            let on_vblank = |_: &mut Cpu, mem: &mut Memory| {
+                *player_data = extract::player_data(mem);
+                let interface_data = &interface_data.borrow();
+                if interface_data.sprites_enabled() {
+                    draw_other_players(interface_data, player_data, mem, default_sprite);
                 }
-            );
+
+                let _ = emu_texture.with_lock(None, |mut pixels, _| {
+                    copy_memory(&mut pixels, &mem.gpu.framebuffer);
+                });
+            };
+
+            emulator.frame(on_tick, on_vblank);
         }
 
     }
@@ -199,6 +205,8 @@ fn draw_other_players(interface_data: &InterfaceData, self_data: &PlayerData, me
     }
 }
 
+/// Get the screen coordinates of where to draw a target player adjusted relative to the local
+/// player's screen
 fn get_player_draw_position(self_player: &PlayerData, other_player: &PlayerData) -> (i32, i32) {
     let base_x = (graphics::WIDTH as i32) / 2 - 16;
     let base_y = (graphics::HEIGHT as i32) / 2 - 12;
@@ -229,6 +237,8 @@ fn get_player_position(player: &PlayerData) -> (i32, i32) {
 }
 
 fn get_sprite_index_and_flags(player: &PlayerData) -> (isize, u8) {
+    // Determine the base sprite index and flags that need to be set based on the direction the
+    // player is currently facing.
     let (mut index, mut flags) = match player.movement_data.direction {
         Direction::Down  => (0, 0x00),
         Direction::Up    => (1, 0x00),
@@ -236,13 +246,15 @@ fn get_sprite_index_and_flags(player: &PlayerData) -> (isize, u8) {
         Direction::Right => (2, 0x20),
     };
 
+    // Set the flag that indicates background data may be drawn on top. I'm not sure if this is
+    // strictly nessesary, however it seems to be set by most sprites.
     flags |= 0x80;
 
-    index += match player.movement_data.walk_counter / 4 {
+    // Change the frame which is displayed based on
+    index += match (player.movement_data.walk_counter / 4) & 1 {
         0 => 0,
         1 => 3,
-
-        _ => 0, // Usually unreachable
+        _ => unreachable!(),
     };
 
     (index, flags)
