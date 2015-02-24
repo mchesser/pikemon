@@ -1,5 +1,5 @@
 //! Module for interfacing with the emulator
-use std::collections::RingBuf;
+use std::collections::VecDeque;
 use std::collections::HashMap;
 
 use gb_emu::mmu::Memory;
@@ -39,7 +39,7 @@ pub struct InterfaceData {
     pub last_interaction: u32,
     sprite_id_state: DataState,
     text_state: DataState,
-    current_message: RingBuf<u8>,
+    current_message: VecDeque<u8>,
     sprites_enabled: bool,
 }
 
@@ -52,7 +52,7 @@ impl InterfaceData {
             last_interaction: 0,
             sprite_id_state: DataState::Normal,
             text_state: DataState::Normal,
-            current_message: RingBuf::new(),
+            current_message: VecDeque::new(),
             sprites_enabled: false,
         }
     }

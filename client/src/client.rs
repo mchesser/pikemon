@@ -1,6 +1,6 @@
 use sdl2;
 use sdl2::SdlResult;
-use sdl2::event::{Event, poll_event};
+use sdl2::event::Event;
 use sdl2::video::{Window, OPENGL};
 use sdl2::video::WindowPos::PosCentered;
 use sdl2::render::{self, Renderer, RenderDriverIndex, TextureAccess};
@@ -26,7 +26,8 @@ pub const FONT_SCALE: i32 = 1;
 pub fn run(mut client_manager: ClientManager, mut emulator: Box<Emulator>) -> SdlResult<()> {
     const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
 
-    sdl2::init(sdl2::INIT_EVERYTHING);
+    let sdl_context = sdl2::init(sdl2::INIT_EVERYTHING).unwrap();
+    let mut events = sdl_context.event_pump();
 
     let window = try!(Window::new("Pikemon", PosCentered, PosCentered, EMU_WIDTH + CHAT_WIDTH,
         EMU_HEIGHT, OPENGL));
@@ -49,21 +50,21 @@ pub fn run(mut client_manager: ClientManager, mut emulator: Box<Emulator>) -> Sd
     let mut fast_mode = false;
 
     'main: loop {
-        'event: loop {
-            match poll_event() {
+        for event in events.poll_iter() {
+            match event {
                 Event::Quit{..} => break 'main,
 
                 Event::KeyDown{ keycode: code, .. } => {
                     game.key_down(code);
                     if code == KeyCode::Space { fast_mode = true; };
                 },
+
                 Event::KeyUp{ keycode: code, .. } => {
                     game.key_up(code);
                     if code == KeyCode::Space { fast_mode = false; };
                 }
 
-                Event::None => break,
-                _ => continue,
+                _ => {},
             }
         }
 

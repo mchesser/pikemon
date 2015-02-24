@@ -1,4 +1,4 @@
-#![feature(core, box_syntax, std_misc, path, io, env, collections)]
+#![feature(core, box_syntax, old_path, old_io, env, collections)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;

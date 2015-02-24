@@ -1,11 +1,11 @@
-#![feature(io, std_misc)]
+#![feature(old_io, std_misc)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate common;
 
 use rustc_serialize::json;
 
-use std::thread::Thread;
+use std::thread;
 use std::collections::HashMap;
 use std::old_io::{IoResult, TcpListener, TcpStream, BufferedReader};
 use std::old_io::{Acceptor, Listener};
@@ -26,7 +26,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
     let (new_client_sender, new_client_receiver) = channel();
     let (packet_sender, packet_receiver) = channel();
 
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         let _ = acceptor(listener, new_client_sender, packet_sender);
     });
 
@@ -103,7 +103,7 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, TcpStream)>,
                 server_sender: server_sender.clone(),
             };
 
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 let _ = client_handler(client);
             });
             try!(new_client_sender.send((next_id, stream)));

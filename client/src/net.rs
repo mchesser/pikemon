@@ -1,5 +1,5 @@
 use std::mem;
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{Sender, Receiver};
 use std::old_io::{TcpStream, BufferedReader};
 
@@ -28,7 +28,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
     };
 
     let global_update_sender = network_manager.global_update_sender;
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         loop {
             match receiver_socket.read_line() {
                 Ok(data) => {
@@ -47,7 +47,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
 
     let local_update_receiver = network_manager.local_update_receiver;
     let mut sender_socket = network_manager.socket;
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         loop {
             let packet = json::encode(&local_update_receiver.recv().unwrap()).unwrap();
 
