@@ -5,11 +5,12 @@ use std::old_io::{TcpStream, BufferedReader};
 
 use rustc_serialize::json;
 
-use common::{NetworkEvent, MovementData, PlayerData, PlayerId};
-use common::error::{NetworkError, NetworkResult};
+use network_common::{NetworkEvent, PlayerId};
+use network_common::error::{NetworkError, NetworkResult};
 
 use interface::{self, NetworkRequest, InterfaceState};
 use interface::{text, extract};
+use interface::data::{MovementData, PlayerData};
 use game::Game;
 
 pub struct NetworkManager {

@@ -6,8 +6,8 @@ authors = ["Michael Chesser"]
 [[bin]]
 name = "pikemon_client"
 
-[dependencies.common]
-path = "../common"
+[dependencies.network_common]
+path = "../network_common"
 
 [dependencies.interface]
 path = "../interface"

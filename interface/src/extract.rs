@@ -8,11 +8,11 @@ use sdl2::render::{Renderer, Texture};
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
-use common::{PlayerData, MovementData, Direction};
-use common::data::{Party, BATTLE_DATA_SIZE, PlayerBattleData, PokemonData};
+use values::Direction;
+use data::{Party, BATTLE_DATA_SIZE, BattleData, PokemonData, PlayerData, MovementData};
 
-use super::offsets;
-use super::text;
+use offsets;
+use text;
 
 fn movement_data(mem: &Memory) -> MovementData {
     MovementData {
@@ -42,9 +42,9 @@ pub fn player_data(mem: &Memory) -> PlayerData {
     }
 }
 
-pub fn battle_data(mem: &Memory) -> PlayerBattleData {
+pub fn battle_data(mem: &Memory) -> BattleData {
     let offset = offsets::PLAYER_BATTLE_DATA_START;
-    PlayerBattleData {
+    BattleData {
         data: (0..BATTLE_DATA_SIZE as u16).map(|i| mem.lb(offset + i)).collect(),
     }
 }

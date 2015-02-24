@@ -1,10 +1,10 @@
 [package]
-name = "common"
+name = "network_common"
 version = "0.0.0"
 authors = ["Michael Chesser"]
 
-[lib]
-name = "common"
+[dependencies.interface]
+path = "../interface"
 
 [dependencies]
 rustc-serialize = "*"

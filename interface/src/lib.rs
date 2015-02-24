@@ -1,8 +1,8 @@
 #![feature(collections, core)]
 //! Crate for interfacing with the emulator
-extern crate common;
 extern crate gb_emu;
 extern crate sdl2;
+extern crate "rustc-serialize" as rustc_serialize;
 
 use std::collections::VecDeque;
 use std::collections::HashMap;
@@ -10,11 +10,11 @@ use std::collections::HashMap;
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
-use common::{SpriteData, PlayerData, PlayerId};
-use common::data::{self, Party, PlayerBattleData};
+use data::{Party, BattleData};
 
 pub mod offsets;
 pub mod values;
+pub mod data;
 pub mod extract;
 pub mod text;
 pub mod hacks;
@@ -31,6 +31,8 @@ pub enum InterfaceState {
     Waiting,
 }
 
+pub type PlayerId = u32;
+
 #[derive(PartialEq)]
 pub enum NetworkRequest {
     None,
@@ -40,7 +42,7 @@ pub enum NetworkRequest {
 pub struct InterfaceData {
     pub state: InterfaceState,
     pub network_request: NetworkRequest,
-    pub players: HashMap<u32, PlayerData>,
+    pub players: HashMap<u32, data::PlayerData>,
     pub last_interaction: u32,
     sprite_id_state: DataState,
     text_state: DataState,
@@ -81,7 +83,6 @@ pub fn get_tile_id_addr(x: u8, y: u8) -> u16 {
     offsets::TILE_MAP + 20 * y_offset + x_offset
 }
 
-
 /// Loads a target party into the OAK trainer data slot.
 pub fn load_trainer_party(party: data::Party, mem: &mut Memory) {
     let pokemon = party.pokemon;
@@ -100,7 +101,7 @@ pub fn load_trainer_party(party: data::Party, mem: &mut Memory) {
     mem.cart.rom[bank][addr] = 0;
 }
 
-pub fn set_battle(mem: &mut Memory, enemy: &PlayerData, battle_data: PlayerBattleData) {
+pub fn set_battle(mem: &mut Memory, enemy: &data::PlayerData, battle_data: data::BattleData) {
     mem.sb(offsets::BATTLE_TYPE, values::BattleType::Normal as u8);
     mem.sb(offsets::ACTIVE_BATTLE, values::ActiveBattle::Trainer as u8);
     mem.sb(offsets::IS_LINK_BATTLE, values::TRUE);
@@ -122,7 +123,7 @@ pub fn set_battle(mem: &mut Memory, enemy: &PlayerData, battle_data: PlayerBattl
 
 /// Render a 16x16 sprite
 /// Returns true if the sprite was drawn to the screen
-pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &SpriteData) -> bool {
+pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &data::SpriteData) -> bool {
     const SPRITE_HEIGHT: usize = 16;
     const SPRITE_WIDTH: usize = 16;
 
@@ -184,4 +185,3 @@ pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &SpriteD
 
     true
 }
-

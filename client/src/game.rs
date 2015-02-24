@@ -11,7 +11,8 @@ use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
 use gb_emu::joypad;
 
-use common::{PlayerData, SpriteData, Direction};
+use interface::data::{PlayerData, SpriteData};
+use interface::values::Direction;
 
 use client;
 use interface::{self, extract, hacks, InterfaceData, InterfaceState};

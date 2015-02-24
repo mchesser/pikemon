@@ -3,9 +3,9 @@ name = "pikemon_client"
 version = "0.0.0"
 dependencies = [
  "clock_ticks 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "common 0.0.0",
  "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
  "interface 0.0.0",
+ "network_common 0.0.0",
  "rustc-serialize 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sdl2 0.0.28 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
@@ -21,13 +21,6 @@ version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "common"
-version = "0.0.0"
-dependencies = [
- "rustc-serialize 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "gb_emu"
 version = "0.0.1"
 source = "git+https://github.com/quvarxa/gb_emu.git#7d6c0659b96ca7d9b84bde2d5c88929c683ac5af"
@@ -36,8 +29,8 @@ source = "git+https://github.com/quvarxa/gb_emu.git#7d6c0659b96ca7d9b84bde2d5c88
 name = "interface"
 version = "0.0.0"
 dependencies = [
- "common 0.0.0",
  "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
+ "rustc-serialize 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sdl2 0.0.28 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
@@ -50,6 +43,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "log"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "network_common"
+version = "0.0.0"
+dependencies = [
+ "interface 0.0.0",
+ "rustc-serialize 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "rand"

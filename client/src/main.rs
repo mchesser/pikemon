@@ -2,7 +2,7 @@
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate interface;
-extern crate common;
+extern crate network_common;
 extern crate sdl2;
 extern crate gb_emu;
 

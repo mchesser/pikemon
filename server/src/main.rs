@@ -1,7 +1,8 @@
 #![feature(old_io, std_misc)]
 
 extern crate "rustc-serialize" as rustc_serialize;
-extern crate common;
+extern crate network_common;
+extern crate interface;
 
 use rustc_serialize::json;
 
@@ -11,8 +12,9 @@ use std::old_io::{IoResult, TcpListener, TcpStream, BufferedReader};
 use std::old_io::{Acceptor, Listener};
 use std::sync::mpsc::{channel, Sender};
 
-use common::{NetworkEvent, PlayerId};
-use common::error::NetworkResult;
+use interface::PlayerId;
+use network_common::NetworkEvent;
+use network_common::error::NetworkResult;
 
 struct Client {
     id: PlayerId,
