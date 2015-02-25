@@ -6,8 +6,5 @@ authors = ["Michael Chesser"]
 [dependencies.gb_emu]
 git = "https://github.com/quvarxa/gb_emu.git"
 
-[dependencies.sdl2]
-git = "https://github.com/AngryLawyer/rust-sdl2"
-
 [dependencies]
 rustc-serialize = "*"

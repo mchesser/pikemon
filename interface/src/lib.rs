@@ -1,7 +1,6 @@
 #![feature(collections, core)]
 //! Crate for interfacing with the emulator
 extern crate gb_emu;
-extern crate sdl2;
 extern crate "rustc-serialize" as rustc_serialize;
 
 use std::collections::VecDeque;

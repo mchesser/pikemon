@@ -1,10 +1,6 @@
 use std::iter;
 use std::num::from_u8;
 
-use sdl2::SdlResult;
-use sdl2::surface::Surface;
-use sdl2::render::{Renderer, Texture};
-
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
@@ -93,14 +89,6 @@ pub fn player_party(mem: &Memory) -> Party {
     }
 }
 
-pub fn font_texture<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Texture<'a>> {
-    const BLACK: [u8; 4] = [0, 0, 0, 255];
-    const WHITE: [u8; 4] = [255, 255, 255, 255];
-
-    extract_1bpp_texture(renderer, mem, offsets::FONT_BANK, offsets::FONT_ADDR, 8 * 16 * 8, 8,
-        [BLACK, WHITE])
-}
-
 pub fn default_sprite(mem: &Memory) -> Vec<u8> {
     extract_sprite(mem, offsets::PLAYER_SPRITE_BANK, offsets::PLAYER_SPRITE_ADDR)
 }
@@ -146,21 +134,15 @@ fn extract_sprite(mem: &Memory, bank: usize, addr: u16) -> Vec<u8> {
     buffer
 }
 
-const RMASK: u32 = 0x000000FF;
-const GMASK: u32 = 0x0000FF00;
-const BMASK: u32 = 0x00FF0000;
-const AMASK: u32 = 0xFF000000;
-
-const SDL_BYTES_PER_PIXEL: usize = 4;
-
-pub fn extract_1bpp_texture<'a>(renderer: &'a Renderer, mem: &Memory, bank: usize, addr: u16,
-    width: usize, height: usize, colors: [[u8; 4]; 2]) -> SdlResult<Texture<'a>>
+pub fn extract_1bpp_texture(mem: &Memory, bank: usize, addr: u16, width: usize, height: usize, 
+    palette: [[u8; 4]; 2]) -> Vec<u8>
 {
+    const BYTES_PER_PIXEL: usize = 4;
+
     let num_x_tiles = width / TILE_SIZE;
     let num_y_tiles = height / TILE_SIZE;
-    let buffer_size = (width * height * SDL_BYTES_PER_PIXEL) as usize;
 
-    let mut output_buffer: Vec<_> = iter::repeat(0).take(buffer_size).collect();
+    let mut output_buffer: Vec<_> = vec![0; width * height * BYTES_PER_PIXEL];
     let mut sprite_offset = (addr & 0x3FFF) as usize;
 
     let (mut tile_x, mut tile_y) = (0, 0);
@@ -170,22 +152,15 @@ pub fn extract_1bpp_texture<'a>(renderer: &'a Renderer, mem: &Memory, bank: usiz
             sprite_offset += 1;
 
             for x in (0..8) {
+                let color = if color_row & 1 << (8 - x) != 0 { palette[0] } else { palette[1] };
+            
                 // Compute the offset of where to place this pixel in the output buffer
                 let offset = (((tile_x * TILE_SIZE) + x) +
-                    ((tile_y * TILE_SIZE) + y) * width) * SDL_BYTES_PER_PIXEL;
-
-                if color_row & 1 << (8 - x) != 0 {
-                    output_buffer[offset + 0] = colors[0][0];
-                    output_buffer[offset + 1] = colors[0][1];
-                    output_buffer[offset + 2] = colors[0][2];
-                    output_buffer[offset + 3] = colors[0][3];
-                }
-                else {
-                    output_buffer[offset + 0] = colors[1][0];
-                    output_buffer[offset + 1] = colors[1][1];
-                    output_buffer[offset + 2] = colors[1][2];
-                    output_buffer[offset + 3] = colors[1][3];
-                }
+                    ((tile_y * TILE_SIZE) + y) * width) * BYTES_PER_PIXEL;
+                output_buffer[offset + 0] = color[0];
+                output_buffer[offset + 1] = color[1];
+                output_buffer[offset + 2] = color[2];
+                output_buffer[offset + 3] = color[3];
             }
         }
 
@@ -196,8 +171,6 @@ pub fn extract_1bpp_texture<'a>(renderer: &'a Renderer, mem: &Memory, bank: usiz
             tile_y += 1;
         }
     }
-
-    let surface = try!(Surface::from_data(&mut output_buffer, width as i32, height as i32, 32,
-        (width * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
-    renderer.create_texture_from_surface(&surface)
+    
+    output_buffer
 }
