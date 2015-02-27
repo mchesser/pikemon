@@ -1,3 +1,8 @@
+extern crate clock_ticks;
+
+use std::old_io::timer;
+use std::time::duration::Duration;
+
 use sdl2;
 use sdl2::SdlResult;
 use sdl2::event::Event;
@@ -44,40 +49,18 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
 
     let mut game = Game::new(emulator, emu_texture, player_sprite, font_data);
 
-    let mut emulator_timer = Timer::new();
-    let mut network_timer = Timer::new();
-
-    let mut fast_mode = false;
+    let mut prev_time = clock_ticks::precise_time_ns();
+    let mut frame_time = 0;
 
     'main: loop {
         for event in events.poll_iter() {
             match event {
                 Event::Quit{..} => break 'main,
-
-                Event::KeyDown{ keycode: code, .. } => {
-                    game.key_down(code);
-                    if code == KeyCode::Space { fast_mode = true; };
-                },
-
-                Event::KeyUp{ keycode: code, .. } => {
-                    game.key_up(code);
-                    if code == KeyCode::Space { fast_mode = false; };
-                }
+                Event::KeyDown{ keycode: code, .. } => game.key_down(code),
+                Event::KeyUp{ keycode: code, .. } => game.key_up(code),
 
                 _ => {},
             }
-        }
-
-        if fast_mode || emulator_timer.elapsed_seconds() >= 1.0 / 60.0 {
-            emulator_timer.reset();
-            game.update();
-        }
-
-        if network_timer.elapsed_seconds() >= 1.0 / 60.0 {
-            network_timer.reset();
-            client_manager.update_player(&game.player_data);
-            let _ = client_manager.send_update(&mut game);
-            let _ = client_manager.recv_update(&mut game);
         }
 
         let mut drawer = renderer.drawer();
@@ -85,6 +68,22 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
         drawer.clear();
         game.render(&mut drawer);
         drawer.present();
+
+        client_manager.update_player(&game.player_data);
+        client_manager.send_update(&mut game).unwrap();
+        client_manager.recv_update(&mut game).unwrap();
+
+        let current_time = clock_ticks::precise_time_ns();
+        frame_time += current_time - prev_time;
+        prev_time = current_time;
+
+        const TARGET_TIME_STEP: u64 = 16666667;
+        while frame_time >= TARGET_TIME_STEP {
+            frame_time -= TARGET_TIME_STEP;
+            game.update();
+        }
+
+        timer::sleep(Duration::nanoseconds((TARGET_TIME_STEP - frame_time) as i64));
     }
     Ok(())
 }

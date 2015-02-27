@@ -17,7 +17,6 @@ use save::LocalSaveWrapper;
 
 mod client;
 mod game;
-mod timer;
 mod net;
 mod font;
 mod chat;
