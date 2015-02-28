@@ -18,9 +18,13 @@ pub const PLAYER_NAME_START: u16 = 0xD158;
 pub const PLAYER_SPRITE_ADDR: u16 = 0x4180;
 pub const PLAYER_SPRITE_BANK: usize = 5;
 
-// The address of the main font encoded as 2bpp in the rom
+// The address of the main font encoded as a 1bpp sprite in the rom
 pub const FONT_ADDR: u16 = 0x5A80;
 pub const FONT_BANK: usize = 4;
+
+// The address of the textbox border encoded as 2bpp sprite in the rom
+pub const BORDER_ADDR: u16 = 0x6288 + 2 * 8 * (4 * 6 + 1);
+pub const BORDER_BANK: usize = 4;
 
 // The location of the tile map
 pub const TILE_MAP: u16 = 0xC3A0;

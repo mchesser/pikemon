@@ -18,6 +18,7 @@ use client;
 use interface::{self, extract, hacks, InterfaceData, InterfaceState};
 use chat::ChatBox;
 use font::Font;
+use border::BorderRenderer;
 
 enum GameState {
     Emulator,
@@ -30,6 +31,7 @@ pub struct Game<'a> {
     pub emu_texture: Texture<'a>,
     pub default_sprite: Vec<u8>,
     pub font: Font<'a>,
+    pub border_renderer: BorderRenderer<'a>,
 
     pub game_state: GameState,
     pub interface_data: RefCell<InterfaceData>,
@@ -40,13 +42,14 @@ pub struct Game<'a> {
 
 impl<'a> Game<'a> {
     pub fn new(emulator: Box<Emulator>, emu_texture: Texture<'a>, default_sprite: Vec<u8>,
-        font: Font<'a>) -> Game<'a>
+        font: Font<'a>, border_renderer: BorderRenderer<'a>) -> Game<'a>
     {
         Game {
             emulator: emulator,
             emu_texture: emu_texture,
             default_sprite: default_sprite,
             font: font,
+            border_renderer: border_renderer,
 
             game_state: GameState::Emulator,
             interface_data: RefCell::new(InterfaceData::new()),
@@ -99,8 +102,10 @@ impl<'a> Game<'a> {
         drawer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH,
             client::EMU_HEIGHT)));
 
-        self.chat_box.draw(drawer, &self.font, Rect::new(client::EMU_WIDTH, 0,
-            client::CHAT_WIDTH, client::EMU_HEIGHT));
+        let chat_box_rect = Rect::new(client::EMU_WIDTH, 0, client::CHAT_WIDTH, client::EMU_HEIGHT);
+        self.chat_box.draw(drawer, &self.font, Rect::new(chat_box_rect.x + 8, chat_box_rect.y + 8,
+            chat_box_rect.w - 16, chat_box_rect.h - 16));
+        self.border_renderer.draw_box(drawer, chat_box_rect);
     }
 
     pub fn key_down(&mut self, keycode: KeyCode) {

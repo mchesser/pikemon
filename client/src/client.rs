@@ -11,17 +11,17 @@ use sdl2::video::WindowPos::PosCentered;
 use sdl2::surface::Surface;
 use sdl2::render::{self, Renderer, RenderDriverIndex, TextureAccess};
 use sdl2::pixels::{PixelFormatEnum, Color};
-use sdl2::keycode::KeyCode;
 
 use gb_emu::emulator::Emulator;
 use gb_emu::graphics;
 use gb_emu::mmu::Memory;
 
 use game::Game;
-use timer::Timer;
 use net::ClientManager;
 use interface::{self, extract};
+
 use font::Font;
+use border::BorderRenderer;
 
 const EMU_SCALE: i32 = 3;
 pub const EMU_WIDTH: i32 = graphics::WIDTH as i32 * EMU_SCALE;
@@ -43,11 +43,12 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
 
     let player_sprite = extract::default_sprite(&emulator.mem);
     let font_data = try!(load_font(&renderer, &emulator.mem));
+    let border_renderer = try!(load_border_renderer(&renderer, &emulator.mem));
 
     let emu_texture = try!(renderer.create_texture(PixelFormatEnum::ARGB8888,
         TextureAccess::Streaming, (graphics::WIDTH as i32, graphics::HEIGHT as i32)));
 
-    let mut game = Game::new(emulator, emu_texture, player_sprite, font_data);
+    let mut game = Game::new(emulator, emu_texture, player_sprite, font_data, border_renderer);
 
     let mut prev_time = clock_ticks::precise_time_ns();
     let mut frame_time = 0;
@@ -95,7 +96,7 @@ const AMASK: u32 = 0xFF000000;
 
 const SDL_BYTES_PER_PIXEL: usize = 4;
 
-pub fn load_font<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Font<'a>> {
+fn load_font<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Font<'a>> {
     const BLACK: [u8; 4] = [0, 0, 0, 255];
     const WHITE: [u8; 4] = [255, 255, 255, 255];
 
@@ -103,8 +104,9 @@ pub fn load_font<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Font<'a>
     const FONT_TEX_HEIGHT: usize = 8;
 
     // Extract the font data from the game
-    let mut data = extract::extract_1bpp_texture(mem, interface::offsets::FONT_BANK,
-        interface::offsets::FONT_ADDR, FONT_TEX_WIDTH, FONT_TEX_HEIGHT, [BLACK, WHITE]);
+    let mut data = extract::extract_texture(mem, interface::offsets::FONT_BANK,
+        interface::offsets::FONT_ADDR, FONT_TEX_WIDTH, FONT_TEX_HEIGHT,
+        extract::TextureFormat::Bpp1, &[BLACK, WHITE]);
 
     // Build a texture from the extracted data
     let surface = try!(Surface::from_data(&mut data, FONT_TEX_WIDTH as i32, FONT_TEX_HEIGHT as i32,
@@ -112,4 +114,21 @@ pub fn load_font<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Font<'a>
     let texture = try!(renderer.create_texture_from_surface(&surface));
 
     Ok(Font::new(texture, 8, 8, FONT_SCALE))
+}
+
+fn load_border_renderer<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<BorderRenderer<'a>> {
+    const BORDER_TEX_WIDTH: usize = 8 * 7;
+    const BORDER_TEX_HEIGHT: usize = 8;
+
+    // Extract the border data from the game
+    let mut data = extract::extract_texture(mem, interface::offsets::FONT_BANK,
+        interface::offsets::BORDER_ADDR, BORDER_TEX_WIDTH, BORDER_TEX_HEIGHT,
+        extract::TextureFormat::Bpp2, graphics::GB_COLOR_TABLE);
+
+    // Build a texture from the extracted data
+    let surface = try!(Surface::from_data(&mut data, BORDER_TEX_WIDTH as i32, BORDER_TEX_HEIGHT as i32,
+        32, (BORDER_TEX_WIDTH * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
+    let texture = try!(renderer.create_texture_from_surface(&surface));
+
+    Ok(BorderRenderer::new(texture, 8))
 }

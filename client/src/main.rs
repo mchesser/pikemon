@@ -1,4 +1,4 @@
-#![feature(core, box_syntax, old_path, old_io, env)]
+#![feature(core, box_syntax, old_path, old_io, env, std_misc)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate interface;
@@ -18,6 +18,7 @@ use save::LocalSaveWrapper;
 mod client;
 mod game;
 mod net;
+mod border;
 mod font;
 mod chat;
 mod save;

@@ -40,7 +40,7 @@ impl ChatBox {
 
     pub fn draw(&self, drawer: &mut RenderDrawer, font: &Font, rect: Rect) {
         let mut y = rect.y;
-        let msg_padding = 2 * font.char_width();
+        let msg_padding = 1 * font.char_width();
 
         // Draw the text that the player is currently typing
         let encoded_buffer: Vec<_> = text::Encoder::new(&self.message_buffer).collect();

@@ -134,29 +134,44 @@ fn extract_sprite(mem: &Memory, bank: usize, addr: u16) -> Vec<u8> {
     buffer
 }
 
-pub fn extract_1bpp_texture(mem: &Memory, bank: usize, addr: u16, width: usize, height: usize, 
-    palette: [[u8; 4]; 2]) -> Vec<u8>
+#[derive(Copy)]
+pub enum TextureFormat {
+    Bpp1 = 1,
+    Bpp2 = 2,
+}
+
+pub fn extract_texture(mem: &Memory, bank: usize, addr: u16, width: usize, height: usize,
+    format: TextureFormat, palette: &[graphics::Color]) -> Vec<u8>
 {
-    const BYTES_PER_PIXEL: usize = 4;
+    const BYTES_PER_PIXEL_OUT: usize = 4;
 
     let num_x_tiles = width / TILE_SIZE;
     let num_y_tiles = height / TILE_SIZE;
 
-    let mut output_buffer: Vec<_> = vec![0; width * height * BYTES_PER_PIXEL];
+    let mut output_buffer: Vec<_> = vec![0; width * height * BYTES_PER_PIXEL_OUT];
     let mut sprite_offset = (addr & 0x3FFF) as usize;
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_y < num_y_tiles {
         for y in (0..8) {
-            let color_row = mem.cart.rom[bank][sprite_offset];
-            sprite_offset += 1;
+            let color_low = mem.cart.rom[bank][sprite_offset];
+            let color_high = mem.cart.rom[bank][sprite_offset + 1];
+
+            sprite_offset += format as usize;
 
             for x in (0..8) {
-                let color = if color_row & 1 << (8 - x) != 0 { palette[0] } else { palette[1] };
-            
+                let color = match format {
+                    TextureFormat::Bpp1 => {
+                        if color_low & 1 << (8 - x) != 0 { palette[0] } else { palette[1] }
+                    },
+                    TextureFormat::Bpp2 => {
+                        palette[graphics::get_color_id(color_low, color_high, 7 - x)]
+                    },
+                };
+
                 // Compute the offset of where to place this pixel in the output buffer
                 let offset = (((tile_x * TILE_SIZE) + x) +
-                    ((tile_y * TILE_SIZE) + y) * width) * BYTES_PER_PIXEL;
+                    ((tile_y * TILE_SIZE) + y) * width) * BYTES_PER_PIXEL_OUT;
                 output_buffer[offset + 0] = color[0];
                 output_buffer[offset + 1] = color[1];
                 output_buffer[offset + 2] = color[2];
@@ -171,6 +186,6 @@ pub fn extract_1bpp_texture(mem: &Memory, bank: usize, addr: u16, width: usize, 
             tile_y += 1;
         }
     }
-    
+
     output_buffer
 }
