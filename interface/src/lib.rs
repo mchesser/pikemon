@@ -107,7 +107,7 @@ pub fn set_battle(mem: &mut Memory, enemy: &data::PlayerData, battle_data: data:
     mem.sb(offsets::CURRRENT_OPPONENT, values::TrainerClass::ProfOak as u8 + values::TRAINER_TAG);
 
     let mut offset = offsets::ENEMY_BATTLE_DATA_START;
-    for val in battle_data.data {
+    for val in battle_data {
         mem.sb(offset, val);
         offset += 1;
     }

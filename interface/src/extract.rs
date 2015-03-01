@@ -5,12 +5,12 @@ use gb_emu::mmu::Memory;
 use gb_emu::graphics;
 
 use values::Direction;
-use data::{Party, BATTLE_DATA_SIZE, BattleData, PokemonData, PlayerData, MovementData};
+use data::{Party, BATTLE_DATA_SIZE, BattleData, PokemonData, MovementData};
 
 use offsets;
 use text;
 
-fn movement_data(mem: &Memory) -> MovementData {
+pub fn movement_data(mem: &Memory) -> MovementData {
     MovementData {
         map_id: mem.lb(offsets::MAP_ID),
         map_x: mem.lb(offsets::MAP_X),
@@ -20,7 +20,7 @@ fn movement_data(mem: &Memory) -> MovementData {
     }
 }
 
-pub fn player_data(mem: &Memory) -> PlayerData {
+pub fn player_name(mem: &Memory) -> Vec<u8> {
     let mut name = vec![];
 
     let mut offset = offsets::PLAYER_NAME_START;
@@ -31,18 +31,12 @@ pub fn player_data(mem: &Memory) -> PlayerData {
         }
         offset += 1;
     }
-
-    PlayerData {
-        name: name,
-        movement_data: movement_data(mem),
-    }
+    name
 }
 
 pub fn battle_data(mem: &Memory) -> BattleData {
-    let offset = offsets::PLAYER_BATTLE_DATA_START;
-    BattleData {
-        data: (0..BATTLE_DATA_SIZE as u16).map(|i| mem.lb(offset + i)).collect(),
-    }
+    let base_offset = offsets::PLAYER_BATTLE_DATA_START;
+    (0..BATTLE_DATA_SIZE as u16).map(|i| mem.lb(base_offset + i)).collect()
 }
 
 fn pokemon_data(mem: &Memory, addr: u16) -> PokemonData {
@@ -90,7 +84,7 @@ pub fn player_party(mem: &Memory) -> Party {
 }
 
 pub fn default_sprite(mem: &Memory) -> Vec<u8> {
-    extract_sprite(mem, offsets::PLAYER_SPRITE_BANK, offsets::PLAYER_SPRITE_ADDR)
+    extract_sprite(mem, offsets::BLUE_SPRITE_BANK, offsets::BLUE_SPRITE_ADDR)
 }
 
 const TILE_SIZE: usize = 8;

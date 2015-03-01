@@ -48,7 +48,7 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
     let emu_texture = try!(renderer.create_texture(PixelFormatEnum::ARGB8888,
         TextureAccess::Streaming, (graphics::WIDTH as i32, graphics::HEIGHT as i32)));
 
-    let mut game = Game::new(emulator, emu_texture, player_sprite, font_data, border_renderer);
+    let mut game = Game::new(emulator, emu_texture, font_data, border_renderer);
 
     let mut prev_time = clock_ticks::precise_time_ns();
     let mut frame_time = 0;

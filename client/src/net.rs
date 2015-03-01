@@ -64,7 +64,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
 
 pub struct ClientManager {
     id: PlayerId,
-    last_state: PlayerData,
+    last_state: Option<PlayerData>,
     full_update: Option<PlayerData>,
     movement_update: Option<MovementData>,
     update_sender: Sender<NetworkEvent>,
@@ -77,7 +77,7 @@ impl ClientManager {
     {
         ClientManager {
             id: id,
-            last_state: PlayerData::new(),
+            last_state: None,
             full_update: None,
             movement_update: None,
             update_sender: update_sender,
@@ -86,13 +86,13 @@ impl ClientManager {
     }
 
     pub fn update_player(&mut self, new_data: &PlayerData) {
-        if self.last_state.movement_data != new_data.movement_data {
-            self.last_state.movement_data = new_data.movement_data;
-            self.movement_update = Some(new_data.movement_data);
+        if let Some(ref last_state) = self.last_state {
+            if last_state.movement_data != new_data.movement_data {
+                self.movement_update = Some(new_data.movement_data);
+            }
         }
-
-        if self.last_state != *new_data {
-            self.last_state = new_data.clone();
+        if self.last_state.as_ref() != Some(new_data) {
+            self.last_state = Some(new_data.clone());
             self.full_update = Some(new_data.clone());
         }
     }

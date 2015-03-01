@@ -1,5 +1,9 @@
+use gb_emu::mmu::Memory;
+
 use values::{moves, types, status, pokeid};
 use values::Direction;
+
+use extract;
 
 #[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct MovementData {
@@ -49,15 +53,16 @@ pub struct SpriteData {
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct PlayerData {
     pub name: Vec<u8>,
-    // pub sprite: Vec<u8>, -- TODO: allow players to choose their own sprite
+    pub sprite: Vec<u8>,
     // pub sprite_data: SpriteData,
     pub movement_data: MovementData,
 }
 
 impl PlayerData {
-    pub fn new() -> PlayerData {
+    pub fn new(mem: &Memory) -> PlayerData {
         PlayerData {
             name: vec![],
+            sprite: extract::default_sprite(mem),
             movement_data: MovementData::new(),
         }
     }
@@ -81,12 +86,7 @@ pub struct Party {
 }
 
 pub const BATTLE_DATA_SIZE: usize = 0x194;
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct BattleData {
-    // Should be [u8; BATTLE_DATA_SIZE], but needs to be a Vec to be encodable
-    // (due to rust limitations)
-    pub data: Vec<u8>,
-}
+pub type BattleData = Vec<u8>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 #[allow(missing_copy_implementations)]

@@ -15,8 +15,12 @@ pub const WALK_COUNTER: u16 = 0xCFC5;
 pub const PLAYER_NAME_START: u16 = 0xD158;
 
 // The address of the player spritesheet encoded as 2bpp in the rom
-pub const PLAYER_SPRITE_ADDR: u16 = 0x4180;
-pub const PLAYER_SPRITE_BANK: usize = 5;
+pub const RED_SPRITE_ADDR: u16 = 0x4180;
+pub const RED_SPRITE_BANK: usize = 5;
+pub const BLUE_SPRITE_ADDR: u16 = 0x4300;
+pub const BLUE_SPRITE_BANK: usize = 5;
+pub const OAK_SPRITE_ADDR: u16 = 0x4480;
+pub const OAK_SPRITE_BANK: usize = 5;
 
 // The address of the main font encoded as a 1bpp sprite in the rom
 pub const FONT_ADDR: u16 = 0x5A80;

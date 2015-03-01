@@ -1,3 +1,4 @@
+use std::mem;
 use std::cell::RefCell;
 use std::slice::bytes::copy_memory;
 
@@ -29,7 +30,6 @@ enum GameState {
 pub struct Game<'a> {
     pub emulator: Box<Emulator>,
     pub emu_texture: Texture<'a>,
-    pub default_sprite: Vec<u8>,
     pub font: Font<'a>,
     pub border_renderer: BorderRenderer<'a>,
 
@@ -41,20 +41,20 @@ pub struct Game<'a> {
 }
 
 impl<'a> Game<'a> {
-    pub fn new(emulator: Box<Emulator>, emu_texture: Texture<'a>, default_sprite: Vec<u8>,
-        font: Font<'a>, border_renderer: BorderRenderer<'a>) -> Game<'a>
+    pub fn new(emulator: Box<Emulator>, emu_texture: Texture<'a>, font: Font<'a>,
+        border_renderer: BorderRenderer<'a>) -> Game<'a>
     {
+        let player_data = PlayerData::new(&emulator.mem);
         Game {
             emulator: emulator,
             emu_texture: emu_texture,
-            default_sprite: default_sprite,
             font: font,
             border_renderer: border_renderer,
 
             game_state: GameState::Emulator,
             interface_data: RefCell::new(InterfaceData::new()),
             chat_box: ChatBox::new(),
-            player_data: PlayerData::new(),
+            player_data: player_data,
             fast_mode: false,
         }
     }
@@ -64,7 +64,6 @@ impl<'a> Game<'a> {
             // Individually borrow elements of self that we need so that we pass Rust's borrow
             // checker. (Hopefully we won't need to do this in the future)
             let interface_data = &mut self.interface_data;
-            let default_sprite = &self.default_sprite;
             let player_data = &mut self.player_data;
             let emu_texture = &mut self.emu_texture;
             let emulator = &mut self.emulator;
@@ -82,10 +81,16 @@ impl<'a> Game<'a> {
             // to a texture. It is important do this during the vblank period to ensure that we
             // don't get partially redrawn lines affecting the result.
             let on_vblank = |_: &mut Cpu, mem: &mut Memory| {
-                *player_data = extract::player_data(mem);
+                let new_player_data = PlayerData {
+                    name: extract::player_name(mem),
+                    sprite: mem::replace(&mut player_data.sprite, vec![]),
+                    movement_data: extract::movement_data(mem),
+                };
+                *player_data = new_player_data;
+
                 let interface_data = &interface_data.borrow();
                 if interface_data.sprites_enabled() {
-                    draw_other_players(interface_data, player_data, mem, default_sprite);
+                    draw_other_players(interface_data, player_data, mem);
                 }
 
                 let _ = emu_texture.with_lock(None, |mut pixels, _| {
@@ -103,8 +108,8 @@ impl<'a> Game<'a> {
             client::EMU_HEIGHT)));
 
         let chat_box_rect = Rect::new(client::EMU_WIDTH, 0, client::CHAT_WIDTH, client::EMU_HEIGHT);
-        self.chat_box.draw(drawer, &self.font, Rect::new(chat_box_rect.x + 8, chat_box_rect.y + 8,
-            chat_box_rect.w - 16, chat_box_rect.h - 16));
+        self.chat_box.draw(drawer, &self.font, Rect::new(chat_box_rect.x + 10, chat_box_rect.y + 10,
+            chat_box_rect.w - 20, chat_box_rect.h - 20));
         self.border_renderer.draw_box(drawer, chat_box_rect);
     }
 
@@ -139,7 +144,7 @@ impl<'a> Game<'a> {
 
     fn write_to_joypad(&mut self, keycode: KeyCode, state: joypad::State) {
         let joypad = &mut self.emulator.mem.joypad;
-        // TODO: Add custom keybindings
+        // TODO: Add custom key bindings
         match keycode {
             KeyCode::Up => joypad.up = state,
             KeyCode::Down => joypad.down = state,
@@ -193,9 +198,7 @@ impl<'a> Game<'a> {
     }
 }
 
-fn draw_other_players(interface_data: &InterfaceData, self_data: &PlayerData, mem: &mut Memory,
-    sprite: &[u8])
-{
+fn draw_other_players(interface_data: &InterfaceData, self_data: &PlayerData, mem: &mut Memory) {
     for player in interface_data.players.values() {
         if player.is_visible_to(self_data) {
             let (x, y) = get_player_draw_position(self_data, player);
@@ -206,7 +209,7 @@ fn draw_other_players(interface_data: &InterfaceData, self_data: &PlayerData, me
                 index: index as usize,
                 flags: flags,
             };
-            interface::render_sprite(mem, sprite, &sprite_data);
+            interface::render_sprite(mem, &player.sprite, &sprite_data);
         }
     }
 }
@@ -253,7 +256,7 @@ fn get_sprite_index_and_flags(player: &PlayerData) -> (isize, u8) {
     };
 
     // Set the flag that indicates background data may be drawn on top. I'm not sure if this is
-    // strictly nessesary, however it seems to be set by most sprites.
+    // strictly necessary, however it seems to be set by most sprites.
     flags |= 0x80;
 
     // Change the frame which is displayed based on
