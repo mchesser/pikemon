@@ -46,12 +46,12 @@ impl<'a> Iterator for Encoder<'a> {
             match char_ {
                 'A'...'Z' => 0x80 + (val - 'A' as u8),
 
-                '('       => 0x8A,
-                ')'       => 0x8B,
-                ':'       => 0x8C,
-                ';'       => 0x8D,
-                '['       => 0x8E,
-                ']'       => 0x8F,
+                '('       => 0x9A,
+                ')'       => 0x9B,
+                ':'       => 0x9C,
+                ';'       => 0x9D,
+                '['       => 0x9E,
+                ']'       => 0x9F,
 
                 'a'...'z' => 0xA0 + (val - 'a' as u8),
 

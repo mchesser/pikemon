@@ -57,8 +57,9 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
         for event in events.poll_iter() {
             match event {
                 Event::Quit{..} => break 'main,
-                Event::KeyDown{ keycode: code, .. } => game.key_down(code),
-                Event::KeyUp{ keycode: code, .. } => game.key_up(code),
+                Event::KeyDown{ keycode, .. } => game.key_down(keycode),
+                Event::KeyUp{ keycode, .. } => game.key_up(keycode),
+                Event::TextInput{ text, .. } => game.text_input(text),
 
                 _ => {},
             }

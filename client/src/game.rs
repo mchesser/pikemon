@@ -5,6 +5,7 @@ use std::slice::bytes::copy_memory;
 use sdl2::rect::Rect;
 use sdl2::keycode::KeyCode;
 use sdl2::render::{RenderDrawer, Texture};
+use sdl2::keyboard as sdl_keyboard;
 
 use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
@@ -21,6 +22,7 @@ use chat::ChatBox;
 use font::Font;
 use border::BorderRenderer;
 
+#[derive(PartialEq)]
 enum GameState {
     Emulator,
     ChatBox,
@@ -120,7 +122,11 @@ impl<'a> Game<'a> {
                 if keycode == KeyCode::Space { self.fast_mode = true; }
             },
 
-            GameState::ChatBox => self.write_to_chatbox(keycode),
+            GameState::ChatBox => match keycode {
+                // TODO: Possible handle other editing
+                KeyCode::Backspace => { self.chat_box.message_buffer.pop(); },
+                _ => {},
+            },
 
             GameState::Menu => unimplemented!(),
         }
@@ -131,14 +137,27 @@ impl<'a> Game<'a> {
             GameState::Emulator => {
                 self.write_to_joypad(keycode, joypad::State::Released);
                 if keycode == KeyCode::Space { self.fast_mode = false; }
-                else if keycode == KeyCode::T { self.game_state = GameState::ChatBox; }
+                else if keycode == KeyCode::T {
+                    self.game_state = GameState::ChatBox;
+                    sdl_keyboard::start_text_input();
+                }
             },
 
             GameState::ChatBox => {
-                if keycode == KeyCode::Return { self.game_state = GameState::Emulator; }
+                if keycode == KeyCode::Return {
+                    self.chat_box.message_ready = true;
+                    self.game_state = GameState::Emulator;
+                    sdl_keyboard::stop_text_input();
+                }
             },
 
             GameState::Menu => unimplemented!(),
+        }
+    }
+
+    pub fn text_input(&mut self, text: String) {
+        if self.game_state == GameState::ChatBox {
+            self.chat_box.message_buffer.push_str(&text);
         }
     }
 
@@ -158,43 +177,6 @@ impl<'a> Game<'a> {
 
             _ => {},
         }
-    }
-
-    fn write_to_chatbox(&mut self, keycode: KeyCode) {
-        let letter = match keycode {
-            KeyCode::Return => { self.chat_box.message_ready = true; return },
-            KeyCode::Backspace => { self.chat_box.message_buffer.pop(); return },
-            KeyCode::Space => ' ',
-            KeyCode::A => 'a',
-            KeyCode::B => 'b',
-            KeyCode::C => 'c',
-            KeyCode::D => 'd',
-            KeyCode::E => 'e',
-            KeyCode::F => 'f',
-            KeyCode::G => 'g',
-            KeyCode::H => 'h',
-            KeyCode::I => 'i',
-            KeyCode::J => 'j',
-            KeyCode::K => 'k',
-            KeyCode::L => 'l',
-            KeyCode::M => 'm',
-            KeyCode::N => 'n',
-            KeyCode::O => 'o',
-            KeyCode::P => 'p',
-            KeyCode::Q => 'q',
-            KeyCode::R => 'r',
-            KeyCode::S => 's',
-            KeyCode::T => 't',
-            KeyCode::U => 'u',
-            KeyCode::V => 'v',
-            KeyCode::W => 'w',
-            KeyCode::X => 'x',
-            KeyCode::Y => 'y',
-            KeyCode::Z => 'z',
-            _ => return,
-        };
-
-        self.chat_box.message_buffer.push(letter);
     }
 }
 
