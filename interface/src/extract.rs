@@ -142,7 +142,7 @@ pub fn extract_texture(mem: &Memory, bank: usize, addr: u16, width: usize, heigh
     let num_x_tiles = width / TILE_SIZE;
     let num_y_tiles = height / TILE_SIZE;
 
-    let mut output_buffer: Vec<_> = vec![0; width * height * BYTES_PER_PIXEL_OUT];
+    let mut output_buffer = vec![0; width * height * BYTES_PER_PIXEL_OUT];
     let mut sprite_offset = (addr & 0x3FFF) as usize;
 
     let (mut tile_x, mut tile_y) = (0, 0);
@@ -156,7 +156,7 @@ pub fn extract_texture(mem: &Memory, bank: usize, addr: u16, width: usize, heigh
             for x in (0..8) {
                 let color = match format {
                     TextureFormat::Bpp1 => {
-                        if color_low & 1 << (8 - x) != 0 { palette[0] } else { palette[1] }
+                        if color_low & (1 << (7 - x)) != 0 { palette[0] } else { palette[1] }
                     },
                     TextureFormat::Bpp2 => {
                         palette[graphics::get_color_id(color_low, color_high, 7 - x)]
