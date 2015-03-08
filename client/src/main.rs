@@ -1,4 +1,4 @@
-#![feature(core, box_syntax, old_path, old_io, env, std_misc)]
+#![feature(core, box_syntax, old_path, old_io, io, fs, std_misc)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate interface;
@@ -6,7 +6,9 @@ extern crate network_common;
 extern crate sdl2;
 extern crate gb_emu;
 
-use std::old_io::{File, TcpStream};
+use std::old_io::TcpStream;
+use std::io::prelude::*;
+use std::fs::File;
 use std::sync::mpsc::channel;
 
 use gb_emu::emulator::Emulator;
@@ -44,7 +46,12 @@ fn main() {
 
     let mut emulator = box Emulator::new();
 
-    let cart = File::open(&Path::new("Pokemon Red.gb")).read_to_end().unwrap();
+    let cart = {
+        let mut data = vec![];
+        let mut f = File::open(&Path::new("Pokemon Red.gb")).unwrap();
+        f.read_to_end(&mut data).unwrap();
+        data
+    };
     let save_path = Path::new("Pokemon Red.sav");
 
     let save_file = Box::new(LocalSaveWrapper { path: save_path }) as Box<cart::SaveFile>;

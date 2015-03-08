@@ -41,7 +41,6 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
     let renderer = try!(Renderer::from_window(window, RenderDriverIndex::Auto,
         render::ACCELERATED));
 
-    let player_sprite = extract::default_sprite(&emulator.mem);
     let font_data = try!(load_font(&renderer, &emulator.mem));
     let border_renderer = try!(load_border_renderer(&renderer, &emulator.mem));
 

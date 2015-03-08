@@ -1,5 +1,6 @@
-use std::old_io::fs;
-use std::old_io::{File, IoErrorKind};
+use std::io;
+use std::io::prelude::*;
+use std::fs::{self, File};
 
 use gb_emu::cart::SaveFile;
 
@@ -9,7 +10,7 @@ pub struct LocalSaveWrapper {
 
 impl SaveFile for LocalSaveWrapper {
     fn load(&mut self, data: &mut [u8]) {
-        if let Ok(_) = File::open(&self.path).read(data) {
+        if let Ok(_) = File::open(&self.path).map(|mut f| f.read(data)) {
             println!("Loaded {}", self.path.display());
         }
     }
@@ -18,16 +19,16 @@ impl SaveFile for LocalSaveWrapper {
         // First create a temporary file and write to that, to ensure that if an error occurs, the
         // old file is not lost.
         let tmp_path = self.path.with_extension("sav.tmp");
-        if let Err(e) = File::create(&tmp_path).write_all(data) {
+        if let Err(e) = File::create(&tmp_path).map(|mut f| f.write_all(data)) {
             println!("An error occured when writing the save file: {}", e);
             return;
         }
 
         // At this stage the new save file has been successfully written, so we can safely remove
         // the old file if it exists.
-        match fs::unlink(&self.path) {
+        match fs::remove_file(&self.path) {
             Ok(_) => {},
-            Err(ref e) if e.kind == IoErrorKind::FileNotFound => {},
+            Err(ref e) if e.kind() == io::ErrorKind::FileNotFound => {},
             Err(e) => {
                 println!("Error removing old save file ({}), current save has been written to: {}",
                     e, tmp_path.display());
