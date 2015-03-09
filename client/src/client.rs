@@ -28,7 +28,7 @@ pub const EMU_WIDTH: i32 = graphics::WIDTH as i32 * EMU_SCALE;
 pub const EMU_HEIGHT: i32 = graphics::HEIGHT as i32 * EMU_SCALE;
 
 pub const CHAT_WIDTH: i32 = 200;
-pub const FONT_SCALE: i32 = 1;
+pub const CHAT_SCALE: i32 = 1;
 
 pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlResult<()> {
     const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
@@ -47,7 +47,7 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
     let emu_texture = try!(renderer.create_texture(PixelFormatEnum::ARGB8888,
         TextureAccess::Streaming, (graphics::WIDTH as i32, graphics::HEIGHT as i32)));
 
-    let mut game = Game::new(emulator, emu_texture, font_data, border_renderer);
+    let mut game = Game::new(emulator, emu_texture, &font_data, &border_renderer);
 
     let mut prev_time = clock_ticks::precise_time_ns();
     let mut frame_time = 0;
@@ -113,7 +113,7 @@ fn load_font<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Font<'a>> {
         32, (FONT_TEX_WIDTH * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
     let texture = try!(renderer.create_texture_from_surface(&surface));
 
-    Ok(Font::new(texture, 8, 8, FONT_SCALE))
+    Ok(Font::new(texture, 8, 8, CHAT_SCALE))
 }
 
 fn load_border_renderer<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<BorderRenderer<'a>> {
@@ -130,5 +130,5 @@ fn load_border_renderer<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<B
         32, (BORDER_TEX_WIDTH * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
     let texture = try!(renderer.create_texture_from_surface(&surface));
 
-    Ok(BorderRenderer::new(texture, 8))
+    Ok(BorderRenderer::new(texture, 8, CHAT_SCALE))
 }

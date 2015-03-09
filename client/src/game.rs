@@ -32,21 +32,22 @@ enum GameState {
 pub struct Game<'a> {
     pub emulator: Box<Emulator>,
     pub emu_texture: Texture<'a>,
-    pub font: Font<'a>,
-    pub border_renderer: BorderRenderer<'a>,
+    pub font: &'a Font<'a>,
+    pub border_renderer: &'a BorderRenderer<'a>,
 
     pub game_state: GameState,
     pub interface_data: RefCell<InterfaceData>,
-    pub chat_box: ChatBox,
+    pub chat_box: ChatBox<'a>,
     pub player_data: PlayerData,
     pub fast_mode: bool,
 }
 
 impl<'a> Game<'a> {
-    pub fn new(emulator: Box<Emulator>, emu_texture: Texture<'a>, font: Font<'a>,
-        border_renderer: BorderRenderer<'a>) -> Game<'a>
+    pub fn new(emulator: Box<Emulator>, emu_texture: Texture<'a>, font: &'a Font<'a>,
+        border_renderer: &'a BorderRenderer<'a>) -> Game<'a>
     {
         let player_data = PlayerData::new(&emulator.mem);
+        let chat_box_rect = Rect::new(client::EMU_WIDTH, 0, client::CHAT_WIDTH, client::EMU_HEIGHT);
         Game {
             emulator: emulator,
             emu_texture: emu_texture,
@@ -55,7 +56,7 @@ impl<'a> Game<'a> {
 
             game_state: GameState::Emulator,
             interface_data: RefCell::new(InterfaceData::new()),
-            chat_box: ChatBox::new(),
+            chat_box: ChatBox::new(font, border_renderer, chat_box_rect),
             player_data: player_data,
             fast_mode: false,
         }
@@ -108,11 +109,7 @@ impl<'a> Game<'a> {
     pub fn render(&self, drawer: &mut RenderDrawer) {
         drawer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH,
             client::EMU_HEIGHT)));
-
-        let chat_box_rect = Rect::new(client::EMU_WIDTH, 0, client::CHAT_WIDTH, client::EMU_HEIGHT);
-        self.chat_box.draw(drawer, &self.font, Rect::new(chat_box_rect.x + 10, chat_box_rect.y + 10,
-            chat_box_rect.w - 20, chat_box_rect.h - 20));
-        self.border_renderer.draw_box(drawer, chat_box_rect);
+        self.chat_box.draw(drawer);
     }
 
     pub fn key_down(&mut self, keycode: KeyCode) {
