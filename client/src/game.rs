@@ -19,6 +19,7 @@ use interface::values::Direction;
 use client;
 use interface::{self, extract, hacks, InterfaceData, InterfaceState};
 use chat::ChatBox;
+use menu::ItemBox;
 use font::Font;
 use border::BorderRenderer;
 
@@ -38,6 +39,7 @@ pub struct Game<'a> {
     pub game_state: GameState,
     pub interface_data: RefCell<InterfaceData>,
     pub chat_box: ChatBox<'a>,
+    pub menu: ItemBox<'a>,
     pub player_data: PlayerData,
     pub fast_mode: bool,
 }
@@ -48,6 +50,9 @@ impl<'a> Game<'a> {
     {
         let player_data = PlayerData::new(&emulator.mem);
         let chat_box_rect = Rect::new(client::EMU_WIDTH, 0, client::CHAT_WIDTH, client::EMU_HEIGHT);
+        let menu_rect = Rect::new((client::EMU_WIDTH - client::MENU_WIDTH) / 2,
+            (client::EMU_HEIGHT - client::MENU_HEIGHT) / 2, client::MENU_WIDTH,
+            client::MENU_HEIGHT);
         Game {
             emulator: emulator,
             emu_texture: emu_texture,
@@ -57,6 +62,8 @@ impl<'a> Game<'a> {
             game_state: GameState::Emulator,
             interface_data: RefCell::new(InterfaceData::new()),
             chat_box: ChatBox::new(font, border_renderer, chat_box_rect),
+            menu: ItemBox::new(vec!["CONNECT".to_string(), "SHOW PLAYERS".to_string(), "EXIT".to_string()],
+                font, border_renderer, menu_rect),
             player_data: player_data,
             fast_mode: false,
         }
@@ -110,6 +117,10 @@ impl<'a> Game<'a> {
         drawer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH,
             client::EMU_HEIGHT)));
         self.chat_box.draw(drawer);
+
+        if self.game_state == GameState::Menu {
+            self.menu.draw(drawer);
+        }
     }
 
     pub fn key_down(&mut self, keycode: KeyCode) {
@@ -125,7 +136,11 @@ impl<'a> Game<'a> {
                 _ => {},
             },
 
-            GameState::Menu => unimplemented!(),
+            GameState::Menu => match keycode {
+                KeyCode::Up => self.menu.move_up(),
+                KeyCode::Down => self.menu.move_down(),
+                _ => {},
+            },
         }
     }
 
@@ -138,17 +153,36 @@ impl<'a> Game<'a> {
                     self.game_state = GameState::ChatBox;
                     sdl_keyboard::start_text_input();
                 }
-            },
-
-            GameState::ChatBox => {
-                if keycode == KeyCode::Return {
-                    self.chat_box.message_ready = true;
-                    self.game_state = GameState::Emulator;
-                    sdl_keyboard::stop_text_input();
+                else if keycode == KeyCode::Escape {
+                    self.game_state = GameState::Menu;
                 }
             },
 
-            GameState::Menu => unimplemented!(),
+            GameState::ChatBox => {
+                match keycode {
+                    KeyCode::Return => {
+                        self.chat_box.message_ready = true;
+                        self.game_state = GameState::Emulator;
+                        sdl_keyboard::stop_text_input();
+                    },
+
+                    KeyCode::Escape => {
+                        self.game_state = GameState::Emulator;
+                        sdl_keyboard::stop_text_input();
+                    },
+
+                    _ => {},
+                }
+            },
+
+            GameState::Menu => {
+                match keycode {
+                    KeyCode::Escape => {
+                        self.game_state = GameState::Emulator;
+                    },
+                    _ => {},
+                }
+            },
         }
     }
 

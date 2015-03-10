@@ -23,6 +23,7 @@ mod net;
 mod border;
 mod font;
 mod chat;
+mod menu;
 mod save;
 
 fn main() {

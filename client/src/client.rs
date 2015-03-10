@@ -27,7 +27,10 @@ const EMU_SCALE: i32 = 2;
 pub const EMU_WIDTH: i32 = graphics::WIDTH as i32 * EMU_SCALE;
 pub const EMU_HEIGHT: i32 = graphics::HEIGHT as i32 * EMU_SCALE;
 
-pub const CHAT_WIDTH: i32 = 200;
+pub const MENU_WIDTH: i32 = 128 * EMU_SCALE;
+pub const MENU_HEIGHT: i32 = EMU_HEIGHT / 2;
+
+pub const CHAT_WIDTH: i32 = 208;
 pub const CHAT_SCALE: i32 = 1;
 
 pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlResult<()> {
