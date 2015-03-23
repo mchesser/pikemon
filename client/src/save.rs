@@ -1,14 +1,15 @@
 use std::io;
 use std::io::prelude::*;
+use std::path::Path;
 use std::fs::{self, File};
 
 use gb_emu::cart::SaveFile;
 
-pub struct LocalSaveWrapper {
-    pub path: Path,
+pub struct LocalSaveWrapper<'a> {
+    pub path: &'a Path,
 }
 
-impl SaveFile for LocalSaveWrapper {
+impl<'a> SaveFile for LocalSaveWrapper<'a> {
     fn load(&mut self, data: &mut [u8]) {
         if let Ok(_) = File::open(&self.path).map(|mut f| f.read(data)) {
             println!("Loaded {}", self.path.display());
@@ -28,7 +29,7 @@ impl SaveFile for LocalSaveWrapper {
         // the old file if it exists.
         match fs::remove_file(&self.path) {
             Ok(_) => {},
-            Err(ref e) if e.kind() == io::ErrorKind::FileNotFound => {},
+            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {},
             Err(e) => {
                 println!("Error removing old save file ({}), current save has been written to: {}",
                     e, tmp_path.display());

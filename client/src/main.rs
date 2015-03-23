@@ -1,4 +1,4 @@
-#![feature(core, box_syntax, old_path, old_io, io, fs, std_misc)]
+#![feature(core, box_syntax, std_misc, thread_sleep)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate interface;
@@ -6,9 +6,11 @@ extern crate network_common;
 extern crate sdl2;
 extern crate gb_emu;
 
-use std::old_io::TcpStream;
 use std::io::prelude::*;
+use std::path::Path;
 use std::fs::File;
+
+use std::net::TcpStream;
 use std::sync::mpsc::channel;
 
 use gb_emu::emulator::Emulator;
@@ -49,7 +51,10 @@ fn main() {
 
     let cart = {
         let mut data = vec![];
-        let mut f = File::open(&Path::new("Pokemon Red.gb")).unwrap();
+        let mut f = match File::open(Path::new("Pokemon Red.gb")) {
+            Ok(f) => f,
+            Err(e) => panic!("Error opening 'Pokemon Red.gb': {}", e),
+        };
         f.read_to_end(&mut data).unwrap();
         data
     };

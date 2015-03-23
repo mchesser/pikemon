@@ -1,4 +1,4 @@
-#![feature(collections, core)]
+#![feature(str_char, core)]
 //! Crate for interfacing with the emulator
 extern crate gb_emu;
 extern crate "rustc-serialize" as rustc_serialize;

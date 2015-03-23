@@ -1,7 +1,11 @@
 use std::mem;
 use std::thread;
+
+use std::io::prelude::*;
+use std::io::BufReader;
+
+use std::net::TcpStream;
 use std::sync::mpsc::{Sender, Receiver};
-use std::old_io::{TcpStream, BufferedReader};
 
 use rustc_serialize::json;
 
@@ -20,20 +24,22 @@ pub struct NetworkManager {
 }
 
 pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId> {
-    let mut receiver_socket = BufferedReader::new(network_manager.socket.clone());
+    let mut receiver_socket = BufReader::new(try!(network_manager.socket.try_clone()));
+    let mut data_buffer = String::new();
 
-    let join_line = try!(receiver_socket.read_line());
-    let player_id = match json::decode(&join_line) {
+    try!(receiver_socket.read_line(&mut data_buffer));
+    let player_id = match json::decode(&data_buffer) {
         Ok(NetworkEvent::PlayerJoin(id)) => id,
         _ => return Err(NetworkError::DecodeError),
     };
+    data_buffer.clear();
 
     let global_update_sender = network_manager.global_update_sender;
     thread::spawn(move|| {
         loop {
-            match receiver_socket.read_line() {
-                Ok(data) => {
-                    let packet = json::decode(&data).unwrap();
+            match receiver_socket.read_line(&mut data_buffer) {
+                Ok(_) => {
+                    let packet = json::decode(&data_buffer).unwrap();
                     // TODO: better error handling
                     let _ = global_update_sender.send(packet);
                 },
@@ -43,6 +49,7 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
                     break;
                 },
             }
+            data_buffer.clear();
         }
     });
 
@@ -53,8 +60,8 @@ pub fn handle_network(network_manager: NetworkManager) -> NetworkResult<PlayerId
             let packet = json::encode(&local_update_receiver.recv().unwrap()).unwrap();
 
             // TODO: better error handling
-            let _ = sender_socket.write_str(&packet);
-            let _ = sender_socket.write_char('\n');
+            let _ = sender_socket.write(packet.as_bytes());
+            let _ = sender_socket.write("\n".as_bytes());
         }
     });
 

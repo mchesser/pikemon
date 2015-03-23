@@ -24,7 +24,7 @@ use font::Font;
 use border::BorderRenderer;
 
 #[derive(PartialEq)]
-enum GameState {
+pub enum GameState {
     Emulator,
     ChatBox,
     Menu,

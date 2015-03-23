@@ -1,4 +1,4 @@
-#![feature(old_io, std_misc)]
+#![feature(std_misc)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate network_common;
@@ -8,8 +8,11 @@ use rustc_serialize::json;
 
 use std::thread;
 use std::collections::HashMap;
-use std::old_io::{IoResult, TcpListener, TcpStream, BufferedReader};
-use std::old_io::{Acceptor, Listener};
+
+use std::io::prelude::*;
+use std::io::{self, BufReader};
+
+use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{channel, Sender};
 
 use interface::PlayerId;
@@ -43,7 +46,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                     NetworkEvent::Chat(sender_id, _) => {
                         for (&client_id, client_stream) in &mut clients {
                             if client_id != sender_id {
-                                try!(send_to_client(client_stream, &message));
+                                send_to_client(client_stream, &message).unwrap();
                             }
                         }
                     },
@@ -52,13 +55,13 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                         clients.remove(&id);
                         println!("Player: {} disconnected", id);
                         for (_, client_stream) in &mut clients {
-                            try!(send_to_client(client_stream, &message));
+                            send_to_client(client_stream, &message).unwrap();
                         }
                     },
 
                     NetworkEvent::BattleDataRequest(to, _) |
                     NetworkEvent::BattleDataResponse(to, _) => {
-                        try!(send_to_client(&mut clients[to], &message))
+                        send_to_client(&mut clients[to], &message).unwrap();
                     },
 
                     _ => unimplemented!(),
@@ -73,54 +76,54 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
 
                 // Tell connected clients that they need to send an update to the new client
                 for (_, client_stream) in &mut clients {
-                    try!(send_to_client(client_stream, &NetworkEvent::UpdateRequest));
+                    send_to_client(client_stream, &NetworkEvent::UpdateRequest).unwrap();
                 }
             }
         }
     }
 }
 
-fn send_to_client(client_stream: &mut TcpStream, message: &NetworkEvent) -> IoResult<()> {
+fn send_to_client(client_stream: &mut TcpStream, message: &NetworkEvent) -> io::Result<usize> {
     let encoded_message = json::encode(&message).unwrap();
-    try!(client_stream.write_str(&encoded_message));
-    client_stream.write_char('\n')
+    try!(client_stream.write(encoded_message.as_bytes()));
+    client_stream.write("\n".as_bytes())
 }
 
 fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, TcpStream)>,
     server_sender: Sender<NetworkEvent>) -> NetworkResult<()>
 {
-    let mut acceptor = listener.listen();
     let mut next_id = 0;
 
-    for stream in acceptor.incoming() {
+    for stream in listener.incoming() {
         let mut stream = try!(stream);
-            if let Err(e) = send_to_client(&mut stream, &NetworkEvent::PlayerJoin(next_id)) {
-                println!("Failed to communicate with client: {}", e);
-                continue;
-            }
+        if let Err(e) = send_to_client(&mut stream, &NetworkEvent::PlayerJoin(next_id)) {
+            println!("Failed to communicate with client: {}", e);
+            continue;
+        }
 
-            let client = Client {
-                id: next_id,
-                client_stream: stream.clone(),
-                server_sender: server_sender.clone(),
-            };
+        let client = Client {
+            id: next_id,
+            client_stream: try!(stream.try_clone()),
+            server_sender: server_sender.clone(),
+        };
 
-            thread::spawn(move|| {
-                let _ = client_handler(client);
-            });
-            try!(new_client_sender.send((next_id, stream)));
+        thread::spawn(move|| {
+            let _ = client_handler(client);
+        });
+        try!(new_client_sender.send((next_id, stream)));
 
-            next_id += 1;
+        next_id += 1;
     }
 
     Ok(())
 }
 
 fn client_handler(client: Client) -> NetworkResult<()> {
-    let mut client_stream = BufferedReader::new(client.client_stream.clone());
+    let mut client_stream = BufReader::new(client.client_stream);
+    let mut data = String::new();
     loop {
-        match client_stream.read_line() {
-            Ok(data) => {
+        match client_stream.read_line(&mut data) {
+            Ok(_) => {
                 let packet = json::decode(&data).unwrap();
                 try!(client.server_sender.send(packet));
             },
@@ -131,6 +134,7 @@ fn client_handler(client: Client) -> NetworkResult<()> {
                 return Ok(());
             },
         }
+        data.clear();
     }
 }
 

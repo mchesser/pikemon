@@ -1,5 +1,5 @@
 use std::fmt;
-use std::old_io::IoError;
+use std::io;
 use std::sync::mpsc::{SendError, RecvError};
 use std::error::{Error, FromError};
 
@@ -7,7 +7,7 @@ pub type NetworkResult<T> = Result<T, NetworkError>;
 
 #[must_use]
 pub enum NetworkError {
-    Io(IoError),
+    Io(io::Error),
     SendError,
     RecvError,
     DecodeError,
@@ -37,8 +37,8 @@ impl fmt::Debug for NetworkError {
     }
 }
 
-impl FromError<IoError> for NetworkError {
-    fn from_error(err: IoError) -> NetworkError {
+impl FromError<io::Error> for NetworkError {
+    fn from_error(err: io::Error) -> NetworkError {
         NetworkError::Io(err)
     }
 }

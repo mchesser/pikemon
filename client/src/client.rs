@@ -1,6 +1,6 @@
 extern crate clock_ticks;
 
-use std::old_io::timer;
+use std::thread;
 use std::time::duration::Duration;
 
 use sdl2;
@@ -87,7 +87,7 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
             game.update();
         }
 
-        timer::sleep(Duration::nanoseconds((TARGET_TIME_STEP - frame_time) as i64));
+        thread::sleep(Duration::nanoseconds((TARGET_TIME_STEP - frame_time) as i64));
     }
     Ok(())
 }

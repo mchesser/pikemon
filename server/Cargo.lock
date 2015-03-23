@@ -4,20 +4,20 @@ version = "0.0.0"
 dependencies = [
  "interface 0.0.0",
  "network_common 0.0.0",
- "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "gb_emu"
 version = "0.0.1"
-source = "git+https://github.com/quvarxa/gb_emu.git#3e610b4f58f568c10cf9c8f8e145408942529ff7"
+source = "git+https://github.com/quvarxa/gb_emu.git#0be7e500f1f33997866063014399957a9f20df83"
 
 [[package]]
 name = "interface"
 version = "0.0.0"
 dependencies = [
  "gb_emu 0.0.1 (git+https://github.com/quvarxa/gb_emu.git)",
- "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -25,11 +25,11 @@ name = "network_common"
 version = "0.0.0"
 dependencies = [
  "interface 0.0.0",
- "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "rustc-serialize"
-version = "0.3.1"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
