@@ -23,7 +23,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "gb_emu"
 version = "0.0.1"
-source = "git+https://github.com/quvarxa/gb_emu.git#0be7e500f1f33997866063014399957a9f20df83"
+source = "git+https://github.com/quvarxa/gb_emu.git#86ebd55daa44807cb2cf2874f4e65cbdf875b647"
 
 [[package]]
 name = "interface"
