@@ -1,5 +1,4 @@
-#![feature(core, io)]
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate interface;
 
 use interface::data::{PlayerData, MovementData, BattleData};

@@ -1,15 +1,13 @@
 extern crate clock_ticks;
 
 use std::thread;
-use std::time::duration::Duration;
+use std::time::Duration;
 
 use sdl2;
 use sdl2::SdlResult;
 use sdl2::event::Event;
-use sdl2::video::{Window, OPENGL};
-use sdl2::video::WindowPos::PosCentered;
 use sdl2::surface::Surface;
-use sdl2::render::{self, Renderer, RenderDriverIndex, TextureAccess};
+use sdl2::render::{Renderer, TextureAccess};
 use sdl2::pixels::{PixelFormatEnum, Color};
 
 use gb_emu::emulator::Emulator;
@@ -23,26 +21,24 @@ use interface::{self, extract};
 use font::Font;
 use border::BorderRenderer;
 
-const EMU_SCALE: i32 = 2;
-pub const EMU_WIDTH: i32 = graphics::WIDTH as i32 * EMU_SCALE;
-pub const EMU_HEIGHT: i32 = graphics::HEIGHT as i32 * EMU_SCALE;
+const EMU_SCALE: u32 = 2;
+pub const EMU_WIDTH: u32 = graphics::WIDTH as u32 * EMU_SCALE;
+pub const EMU_HEIGHT: u32 = graphics::HEIGHT as u32 * EMU_SCALE;
 
-pub const MENU_WIDTH: i32 = 128 * EMU_SCALE;
-pub const MENU_HEIGHT: i32 = EMU_HEIGHT / 2;
+pub const MENU_WIDTH: u32 = 128 * EMU_SCALE;
+pub const MENU_HEIGHT: u32 = EMU_HEIGHT / 2;
 
-pub const CHAT_WIDTH: i32 = 208;
-pub const CHAT_SCALE: i32 = 1;
+pub const CHAT_WIDTH: u32 = 208;
+pub const CHAT_SCALE: u32 = 1;
 
 pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlResult<()> {
     const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
+    
+    let mut sdl_context = sdl2::init().video().unwrap();
 
-    let sdl_context = sdl2::init(sdl2::INIT_EVERYTHING).unwrap();
-    let mut events = sdl_context.event_pump();
-
-    let window = try!(Window::new("Pikemon", PosCentered, PosCentered, EMU_WIDTH + CHAT_WIDTH,
-        EMU_HEIGHT, OPENGL));
-    let renderer = try!(Renderer::from_window(window, RenderDriverIndex::Auto,
-        render::ACCELERATED));
+    let window = try!(sdl_context.window("Pikemon", EMU_WIDTH, EMU_HEIGHT).position_centered()
+        .opengl().build());
+    let mut renderer = try!(window.renderer().build());
 
     let font_data = try!(load_font(&renderer, &emulator.mem));
     let border_renderer = try!(load_border_renderer(&renderer, &emulator.mem));
@@ -54,6 +50,8 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
 
     let mut prev_time = clock_ticks::precise_time_ns();
     let mut frame_time = 0;
+    
+    let mut events = sdl_context.event_pump();    
 
     'main: loop {
         for event in events.poll_iter() {
@@ -87,19 +85,12 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
             game.update();
         }
 
-        thread::sleep(Duration::nanoseconds((TARGET_TIME_STEP - frame_time) as i64));
+        thread::sleep(Duration::new(0, (TARGET_TIME_STEP - frame_time) as u32));
     }
     Ok(())
 }
 
-const RMASK: u32 = 0x000000FF;
-const GMASK: u32 = 0x0000FF00;
-const BMASK: u32 = 0x00FF0000;
-const AMASK: u32 = 0xFF000000;
-
-const SDL_BYTES_PER_PIXEL: usize = 4;
-
-fn load_font<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Font<'a>> {
+fn load_font(renderer: &Renderer, mem: &Memory) -> SdlResult<Font> {
     const BLACK: [u8; 4] = [0, 0, 0, 255];
     const WHITE: [u8; 4] = [255, 255, 255, 255];
 
@@ -112,14 +103,14 @@ fn load_font<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<Font<'a>> {
         extract::TextureFormat::Bpp1, &[BLACK, WHITE]);
 
     // Build a texture from the extracted data
-    let surface = try!(Surface::from_data(&mut data, FONT_TEX_WIDTH as i32, FONT_TEX_HEIGHT as i32,
-        32, (FONT_TEX_WIDTH * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
+    let surface = try!(Surface::from_data(&mut data, FONT_TEX_WIDTH as u32, FONT_TEX_HEIGHT as u32,
+        32, PixelFormatEnum::ARGB8888));
     let texture = try!(renderer.create_texture_from_surface(&surface));
 
-    Ok(Font::new(texture, 8, 8, CHAT_SCALE))
+    Ok(Font::new(texture, 8, 8, CHAT_SCALE as i32))
 }
 
-fn load_border_renderer<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<BorderRenderer<'a>> {
+fn load_border_renderer(renderer: &Renderer, mem: &Memory) -> SdlResult<BorderRenderer> {
     const BORDER_TEX_WIDTH: usize = 8 * 7;
     const BORDER_TEX_HEIGHT: usize = 8;
 
@@ -129,9 +120,9 @@ fn load_border_renderer<'a>(renderer: &'a Renderer, mem: &Memory) -> SdlResult<B
         extract::TextureFormat::Bpp2, graphics::GB_COLOR_TABLE);
 
     // Build a texture from the extracted data
-    let surface = try!(Surface::from_data(&mut data, BORDER_TEX_WIDTH as i32, BORDER_TEX_HEIGHT as i32,
-        32, (BORDER_TEX_WIDTH * SDL_BYTES_PER_PIXEL) as i32, RMASK, GMASK, BMASK, AMASK));
+    let surface = try!(Surface::from_data(&mut data, BORDER_TEX_WIDTH as u32, BORDER_TEX_HEIGHT as u32,
+        32, PixelFormatEnum::ARGB8888));
     let texture = try!(renderer.create_texture_from_surface(&surface));
 
-    Ok(BorderRenderer::new(texture, 8, CHAT_SCALE))
+    Ok(BorderRenderer::new(texture, 8, CHAT_SCALE as i32))
 }

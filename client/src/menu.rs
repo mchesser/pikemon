@@ -9,15 +9,15 @@ pub struct ItemBox<'a> {
     items: Vec<String>,
     selection: usize,
 
-    font: &'a Font<'a>,
-    border: &'a BorderRenderer<'a>,
+    font: &'a Font,
+    border: &'a BorderRenderer,
 
     outer_rect: Rect,
     inner_rect: Rect,
 }
 
 impl<'a> ItemBox<'a> {
-    pub fn new(items: Vec<String>, font: &'a Font<'a>, border: &'a BorderRenderer<'a>, rect: Rect)
+    pub fn new(items: Vec<String>, font: &'a Font, border: &'a BorderRenderer, rect: Rect)
         -> ItemBox<'a>
     {
         let inner_rect = Rect::new(rect.x + 2 * font.char_width(), rect.y + 2 * font.line_height(),

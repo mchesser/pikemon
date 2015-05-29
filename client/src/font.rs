@@ -3,15 +3,15 @@ use sdl2::render::{Texture, RenderDrawer};
 
 use interface::text::special;
 
-pub struct Font<'a> {
-    texture: Texture<'a>,
+pub struct Font {
+    texture: Texture,
     char_height: i32,
     char_width: i32,
     scale: i32,
 }
 
-impl<'a> Font<'a> {
-    pub fn new(texture: Texture<'a>, char_height: i32, char_width: i32, scale: i32) -> Font<'a> {
+impl Font {
+    pub fn new(texture: Texture, char_height: i32, char_width: i32, scale: i32) -> Font {
         Font {
             texture: texture,
             char_height: char_height,

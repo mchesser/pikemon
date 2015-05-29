@@ -1,3 +1,5 @@
+use num::FromPrimitive;
+
 pub const FALSE: u8 = 0;
 pub const TRUE: u8 = 1;
 
@@ -8,13 +10,30 @@ pub const TRAINER_TAG: u8 = 0xC8;
 /// sprites.
 pub const MAX_MAP_TILE: u8 = 0x5F;
 
-#[derive(Copy, Clone, Debug, PartialEq, FromPrimitive, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum Direction {
     Down = 0x0,
     Up = 0x4,
     Left = 0x8,
     Right = 0xC
 }
+
+impl FromPrimitive for Direction {
+    fn from_i64(n: i64) -> Option<Direction> {
+        match n {
+            0x0 => Some(Direction::Down),
+            0x4 => Some(Direction::Up),
+            0x8 => Some(Direction::Left),
+            0xC => Some(Direction::Right),
+            _ => None,
+        }
+    }
+    
+    fn from_u64(n: u64) -> Option<Direction> {
+        FromPrimitive::from_i64(n as i64)
+    }
+}
+
 
 pub enum BattleType {
     Normal = 0,

@@ -3,13 +3,13 @@ use sdl2::render::{Texture, RenderDrawer};
 use sdl2::rect::Rect;
 
 /// A struct for managing a border
-pub struct BorderRenderer<'a> {
-    texture: Texture<'a>,
+pub struct BorderRenderer {
+    texture: Texture,
     piece_size: i32,
     scale: i32,
 }
 
-impl<'a> BorderRenderer<'a> {
+impl BorderRenderer {
     /// Create a new border drawer.
     ///
     /// # Arguments
@@ -18,7 +18,7 @@ impl<'a> BorderRenderer<'a> {
     /// top-left, top, top-right, left, bottom-left, bottom-right.
     /// * piece_size - The horizontal width of one of the pieces.
     /// * scale - The scale to draw the border at
-    pub fn new(texture: Texture<'a>, piece_size: i32, scale: i32) -> BorderRenderer {
+    pub fn new(texture: Texture, piece_size: i32, scale: i32) -> BorderRenderer {
         BorderRenderer {
             texture: texture,
             piece_size: piece_size,

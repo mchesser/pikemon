@@ -8,3 +8,4 @@ git = "https://github.com/quvarxa/gb_emu.git"
 
 [dependencies]
 rustc-serialize = "*"
+num = "*"

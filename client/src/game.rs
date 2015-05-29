@@ -23,7 +23,7 @@ use menu::ItemBox;
 use font::Font;
 use border::BorderRenderer;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum GameState {
     Emulator,
     ChatBox,
@@ -32,9 +32,9 @@ pub enum GameState {
 
 pub struct Game<'a> {
     pub emulator: Box<Emulator>,
-    pub emu_texture: Texture<'a>,
-    pub font: &'a Font<'a>,
-    pub border_renderer: &'a BorderRenderer<'a>,
+    pub emu_texture: Texture,
+    pub font: &'a Font,
+    pub border_renderer: &'a BorderRenderer,
 
     pub game_state: GameState,
     pub interface_data: RefCell<InterfaceData>,
@@ -45,14 +45,15 @@ pub struct Game<'a> {
 }
 
 impl<'a> Game<'a> {
-    pub fn new(emulator: Box<Emulator>, emu_texture: Texture<'a>, font: &'a Font<'a>,
-        border_renderer: &'a BorderRenderer<'a>) -> Game<'a>
+    pub fn new(emulator: Box<Emulator>, emu_texture: Texture, font: &'a Font,
+        border_renderer: &'a BorderRenderer) -> Game<'a>
     {
         let player_data = PlayerData::new(&emulator.mem);
-        let chat_box_rect = Rect::new(client::EMU_WIDTH, 0, client::CHAT_WIDTH, client::EMU_HEIGHT);
-        let menu_rect = Rect::new((client::EMU_WIDTH - client::MENU_WIDTH) / 2,
-            (client::EMU_HEIGHT - client::MENU_HEIGHT) / 2, client::MENU_WIDTH,
-            client::MENU_HEIGHT);
+        let chat_box_rect = Rect::new(client::EMU_WIDTH as i32, 0, client::CHAT_WIDTH as i32,
+            client::EMU_HEIGHT as i32);
+        let menu_rect = Rect::new(((client::EMU_WIDTH - client::MENU_WIDTH) / 2) as i32,
+            ((client::EMU_HEIGHT - client::MENU_HEIGHT) / 2) as i32, client::MENU_WIDTH as i32,
+            client::MENU_HEIGHT as i32);
         Game {
             emulator: emulator,
             emu_texture: emu_texture,
@@ -104,7 +105,7 @@ impl<'a> Game<'a> {
                 }
 
                 let _ = emu_texture.with_lock(None, |mut pixels, _| {
-                    copy_memory(&mut pixels, &mem.gpu.framebuffer);
+                    copy_memory(&mem.gpu.framebuffer, &mut pixels);
                 });
             };
 
@@ -114,8 +115,8 @@ impl<'a> Game<'a> {
     }
 
     pub fn render(&self, drawer: &mut RenderDrawer) {
-        drawer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH,
-            client::EMU_HEIGHT)));
+        drawer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH as i32,
+            client::EMU_HEIGHT as i32)));
         self.chat_box.draw(drawer);
 
         if self.game_state == GameState::Menu {

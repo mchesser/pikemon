@@ -42,7 +42,7 @@ impl MovementData {
 }
 
 /// The sprite data for a 16x16 sprite
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct SpriteData {
     pub x: isize,
     pub y: isize,

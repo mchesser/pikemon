@@ -1,5 +1,5 @@
 use std::iter;
-use std::num::from_u8;
+use num::FromPrimitive;
 
 use gb_emu::mmu::Memory;
 use gb_emu::graphics;
@@ -15,7 +15,7 @@ pub fn movement_data(mem: &Memory) -> MovementData {
         map_id: mem.lb(offsets::MAP_ID),
         map_x: mem.lb(offsets::MAP_X),
         map_y: mem.lb(offsets::MAP_Y),
-        direction: from_u8(mem.lb(offsets::PLAYER_DIR)).unwrap_or(Direction::Down),
+        direction: Direction::from_u8(mem.lb(offsets::PLAYER_DIR)).unwrap_or(Direction::Down),
         walk_counter: mem.lb(offsets::WALK_COUNTER),
     }
 }
@@ -128,7 +128,7 @@ fn extract_sprite(mem: &Memory, bank: usize, addr: u16) -> Vec<u8> {
     buffer
 }
 
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub enum TextureFormat {
     Bpp1 = 1,
     Bpp2 = 2,

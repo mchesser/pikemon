@@ -1,7 +1,8 @@
 #![feature(str_char, core)]
 //! Crate for interfacing with the emulator
 extern crate gb_emu;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
+extern crate num;
 
 use std::collections::VecDeque;
 use std::collections::HashMap;

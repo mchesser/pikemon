@@ -1,6 +1,6 @@
-#![feature(core, box_syntax, std_misc, thread_sleep)]
+#![feature(core, box_syntax, thread_sleep, duration)]
 
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate interface;
 extern crate network_common;
 extern crate sdl2;
@@ -29,9 +29,8 @@ mod menu;
 mod save;
 
 fn main() {
-    let args = std::env::args();
-
-    let socket = match args.skip(1).next() {
+    println!("Testing");
+    let socket = match std::env::args().nth(1) {
         Some(ip_addr) => TcpStream::connect((&*ip_addr, 8080)).unwrap(),
         // Assume localhost if there was no argument specified
         None => TcpStream::connect(("localhost", 8080)).unwrap(),
@@ -51,7 +50,7 @@ fn main() {
 
     let cart = {
         let mut data = vec![];
-        let mut f = match File::open(Path::new("Pokemon Red.gb")) {
+        let mut f = match File::open("Pokemon Red.gb") {
             Ok(f) => f,
             Err(e) => panic!("Error opening 'Pokemon Red.gb': {}", e),
         };
@@ -66,6 +65,7 @@ fn main() {
 
     let client_manager = ClientManager::new(id, local_update_sender, global_update_receiver);
 
+    println!("All setup!, now we are ready to run the game");
     if let Err(e) = client::run(client_manager, emulator) {
         println!("Pikemon encountered an error and was forced to close. ({})", e);
     }

@@ -1,6 +1,6 @@
 #![feature(std_misc)]
 
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate network_common;
 extern crate interface;
 
@@ -35,7 +35,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
         let _ = acceptor(listener, new_client_sender, packet_sender);
     });
 
-    let mut clients: HashMap<PlayerId, TcpStream> = HashMap::new();
+    let mut clients = HashMap::new();
     loop {
         select! {
             player_packet = packet_receiver.recv() => {
@@ -61,7 +61,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
 
                     NetworkEvent::BattleDataRequest(to, _) |
                     NetworkEvent::BattleDataResponse(to, _) => {
-                        send_to_client(&mut clients[to], &message).unwrap();
+                        send_to_client(clients.get_mut(&to).unwrap(), &message).unwrap();
                     },
 
                     _ => unimplemented!(),

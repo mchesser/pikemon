@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io;
 use std::sync::mpsc::{SendError, RecvError};
-use std::error::{Error, FromError};
+use std::error::Error;
 
 pub type NetworkResult<T> = Result<T, NetworkError>;
 
@@ -37,20 +37,20 @@ impl fmt::Debug for NetworkError {
     }
 }
 
-impl FromError<io::Error> for NetworkError {
-    fn from_error(err: io::Error) -> NetworkError {
+impl From<io::Error> for NetworkError {
+    fn from(err: io::Error) -> NetworkError {
         NetworkError::Io(err)
     }
 }
 
-impl<T> FromError<SendError<T>> for NetworkError {
-    fn from_error(_: SendError<T>) -> NetworkError {
+impl<T> From<SendError<T>> for NetworkError {
+    fn from(_: SendError<T>) -> NetworkError {
         NetworkError::SendError
     }
 }
 
-impl FromError<RecvError> for NetworkError {
-    fn from_error(_: RecvError) -> NetworkError {
+impl From<RecvError> for NetworkError {
+    fn from(_: RecvError) -> NetworkError {
         NetworkError::RecvError
     }
 }

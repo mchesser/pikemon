@@ -17,15 +17,15 @@ pub struct ChatBox<'a> {
     pub message_buffer: String,
     messages: Vec<Message>,
 
-    font: &'a Font<'a>,
-    border: &'a BorderRenderer<'a>,
+    font: &'a Font,
+    border: &'a BorderRenderer,
 
     outer_rect: Rect,
     inner_rect: Rect,
 }
 
 impl<'a> ChatBox<'a> {
-    pub fn new(font: &'a Font<'a>, border: &'a BorderRenderer<'a>, rect: Rect) -> ChatBox<'a> {
+    pub fn new(font: &'a Font, border: &'a BorderRenderer, rect: Rect) -> ChatBox<'a> {
         let inner_rect = Rect::new(rect.x + font.char_width(), rect.y + font.line_height(),
             rect.w - 2 * font.char_width(), rect.h - 2 * font.line_height());
 
