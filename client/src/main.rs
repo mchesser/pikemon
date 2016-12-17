@@ -1,5 +1,3 @@
-#![feature(core, box_syntax, thread_sleep, duration)]
-
 extern crate rustc_serialize;
 extern crate interface;
 extern crate network_common;
@@ -19,6 +17,7 @@ use gb_emu::cart;
 use net::{NetworkManager, ClientManager};
 use save::LocalSaveWrapper;
 
+mod common;
 mod client;
 mod game;
 mod net;
@@ -29,7 +28,6 @@ mod menu;
 mod save;
 
 fn main() {
-    println!("Testing");
     let socket = match std::env::args().nth(1) {
         Some(ip_addr) => TcpStream::connect((&*ip_addr, 8080)).unwrap(),
         // Assume localhost if there was no argument specified
@@ -46,7 +44,7 @@ fn main() {
     };
     let id = net::handle_network(network_manager).unwrap();
 
-    let mut emulator = box Emulator::new();
+    let mut emulator = Box::new(Emulator::new());
 
     let cart = {
         let mut data = vec![];

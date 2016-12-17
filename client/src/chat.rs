@@ -1,9 +1,9 @@
 use std::mem;
 
-use sdl2::render::RenderDrawer;
-use sdl2::rect::Rect;
-
+use sdl2::render::Renderer;
 use interface::text;
+
+use common::Rect;
 use font::{Font, draw_text};
 use border::BorderRenderer;
 
@@ -27,7 +27,7 @@ pub struct ChatBox<'a> {
 impl<'a> ChatBox<'a> {
     pub fn new(font: &'a Font, border: &'a BorderRenderer, rect: Rect) -> ChatBox<'a> {
         let inner_rect = Rect::new(rect.x + font.char_width(), rect.y + font.line_height(),
-            rect.w - 2 * font.char_width(), rect.h - 2 * font.line_height());
+            rect.width - 2 * font.char_width(), rect.height - 2 * font.line_height());
 
         ChatBox {
             message_ready: false,
@@ -56,28 +56,28 @@ impl<'a> ChatBox<'a> {
 
     /// Draws the chat box to the screen.
     /// TODO: Cache the render result
-    pub fn draw(&self, drawer: &mut RenderDrawer) {
+    pub fn draw(&self, renderer: &mut Renderer) {
         let mut y = self.inner_rect.y;
         let msg_padding = self.font.char_width() / 2;
 
         // Draw the text that the player is currently typing
         let encoded_buffer: Vec<_> = text::Encoder::new(&self.message_buffer).collect();
-        y += draw_text(drawer, &self.font, &encoded_buffer, &self.inner_rect);
+        y += draw_text(renderer, &self.font, &encoded_buffer, &self.inner_rect);
         y += self.font.line_height();
 
         // Draw the rest of the chat messages
         for message in self.messages.iter().rev() {
-            y += draw_text(drawer, &self.font, &message.user_name,
-                &Rect::new(self.inner_rect.x, y, self.inner_rect.w, self.inner_rect.h));
+            y += draw_text(renderer, &self.font, &message.user_name,
+                &Rect::new(self.inner_rect.x, y, self.inner_rect.width, self.inner_rect.height));
 
-            y += draw_text(drawer, &self.font, &message.data,
+            y += draw_text(renderer, &self.font, &message.data,
                 &Rect::new(self.inner_rect.x + msg_padding, y,
-                self.inner_rect.w - msg_padding, self.inner_rect.h));
+                self.inner_rect.width - msg_padding, self.inner_rect.height));
 
             y += self.font.line_height();
         }
 
         // Draw the chat border
-        self.border.draw_box(drawer, self.outer_rect);
+        self.border.draw_box(renderer, self.outer_rect);
     }
 }

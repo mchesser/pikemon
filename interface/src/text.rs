@@ -73,11 +73,25 @@ impl<'a> Iterator for Encoder<'a> {
     type Item = u8;
 
     fn next(&mut self) -> Option<u8> {
-        if let Some((char_, rest)) = self.base.slice_shift_char() {
+        if let Some((char_, rest)) = slice_shift_char(self.base) {
             self.base = rest;
             return Some(encode_char(char_));
         }
 
         None
+    }
+}
+
+pub fn char_at(s: &str, byte: usize) -> char {
+    s[byte..].chars().next().unwrap()
+}
+
+#[inline]
+pub fn slice_shift_char(s: &str) -> Option<(char, &str)> {
+    if s.is_empty() {
+        None
+    } else {
+        let ch = char_at(s, 0);
+        Some((ch, &s[ch.len_utf8()..]))
     }
 }

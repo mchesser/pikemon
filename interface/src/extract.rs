@@ -100,14 +100,14 @@ fn extract_sprite(mem: &Memory, bank: usize, addr: u16) -> Vec<u8> {
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_x + 2 * tile_y  < NUM_TILES {
-        for y in (0..TILE_SIZE) {
+        for y in 0..TILE_SIZE {
             // Colors stored in the 2bpp format are split over two bytes. The color's lower bit is
             // stored in the first byte and the high bit is stored in the second byte.
             let color_low = mem.cart.rom[bank][sprite_offset];
             let color_high = mem.cart.rom[bank][sprite_offset + 1];
             sprite_offset += 2;
 
-            for x in (0..TILE_SIZE) {
+            for x in 0..TILE_SIZE {
                 let color_id = graphics::get_color_id(color_low, color_high, x) as u8;
 
                 // Each 16x16 block has the tiles store in reverse, so we have to be careful when
@@ -147,13 +147,13 @@ pub fn extract_texture(mem: &Memory, bank: usize, addr: u16, width: usize, heigh
 
     let (mut tile_x, mut tile_y) = (0, 0);
     while tile_y < num_y_tiles {
-        for y in (0..8) {
+        for y in 0..8 {
             let color_low = mem.cart.rom[bank][sprite_offset];
             let color_high = mem.cart.rom[bank][sprite_offset + 1];
 
             sprite_offset += format as usize;
 
-            for x in (0..8) {
+            for x in 0..8 {
                 let color = match format {
                     TextureFormat::Bpp1 => {
                         if color_low & (1 << (7 - x)) != 0 { palette[0] } else { palette[1] }

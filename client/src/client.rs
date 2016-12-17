@@ -1,10 +1,10 @@
 extern crate clock_ticks;
 
+use std::error::Error;
 use std::thread;
 use std::time::Duration;
 
 use sdl2;
-use sdl2::SdlResult;
 use sdl2::event::Event;
 use sdl2::surface::Surface;
 use sdl2::render::{Renderer, TextureAccess};
@@ -31,45 +31,45 @@ pub const MENU_HEIGHT: u32 = EMU_HEIGHT / 2;
 pub const CHAT_WIDTH: u32 = 208;
 pub const CHAT_SCALE: u32 = 1;
 
-pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlResult<()> {
+pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> Result<(), Box<Error>> {
     const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
-    
-    let mut sdl_context = sdl2::init().video().unwrap();
 
-    let window = try!(sdl_context.window("Pikemon", EMU_WIDTH, EMU_HEIGHT).position_centered()
-        .opengl().build());
-    let mut renderer = try!(window.renderer().build());
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
-    let font_data = try!(load_font(&renderer, &emulator.mem));
-    let border_renderer = try!(load_border_renderer(&renderer, &emulator.mem));
+    let window = video_subsystem.window("Pikemon", EMU_WIDTH, EMU_HEIGHT).position_centered()
+        .opengl().build()?;
+    let mut renderer = window.renderer().accelerated().build()?;
 
-    let emu_texture = try!(renderer.create_texture(PixelFormatEnum::ARGB8888,
-        TextureAccess::Streaming, (graphics::WIDTH as i32, graphics::HEIGHT as i32)));
+    let font_data = load_font(&renderer, &emulator.mem)?;
+    let border_renderer = load_border_renderer(&renderer, &emulator.mem)?;
+
+    let emu_texture = renderer.create_texture_streaming(PixelFormatEnum::ARGB8888,
+        graphics::WIDTH as u32, graphics::HEIGHT as u32)?;
 
     let mut game = Game::new(emulator, emu_texture, &font_data, &border_renderer);
 
     let mut prev_time = clock_ticks::precise_time_ns();
     let mut frame_time = 0;
-    
-    let mut events = sdl_context.event_pump();    
+
+    let mut events = sdl_context.event_pump()?;
 
     'main: loop {
         for event in events.poll_iter() {
             match event {
                 Event::Quit{..} => break 'main,
-                Event::KeyDown{ keycode, .. } => game.key_down(keycode),
-                Event::KeyUp{ keycode, .. } => game.key_up(keycode),
+                Event::KeyDown{ keycode: Some(keycode), .. } => game.key_down(keycode),
+                Event::KeyUp{ keycode: Some(keycode), .. } => game.key_up(keycode),
                 Event::TextInput{ text, .. } => game.text_input(text),
 
                 _ => {},
             }
         }
 
-        let mut drawer = renderer.drawer();
-        drawer.set_draw_color(WHITE);
-        drawer.clear();
-        game.render(&mut drawer);
-        drawer.present();
+        renderer.set_draw_color(WHITE);
+        renderer.clear();
+        game.render(&mut renderer);
+        renderer.present();
 
         client_manager.update_player(&game.player_data);
         client_manager.send_update(&mut game).unwrap();
@@ -90,7 +90,7 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> SdlRes
     Ok(())
 }
 
-fn load_font(renderer: &Renderer, mem: &Memory) -> SdlResult<Font> {
+fn load_font(renderer: &Renderer, mem: &Memory) -> Result<Font, Box<Error>> {
     const BLACK: [u8; 4] = [0, 0, 0, 255];
     const WHITE: [u8; 4] = [255, 255, 255, 255];
 
@@ -103,14 +103,14 @@ fn load_font(renderer: &Renderer, mem: &Memory) -> SdlResult<Font> {
         extract::TextureFormat::Bpp1, &[BLACK, WHITE]);
 
     // Build a texture from the extracted data
-    let surface = try!(Surface::from_data(&mut data, FONT_TEX_WIDTH as u32, FONT_TEX_HEIGHT as u32,
-        32, PixelFormatEnum::ARGB8888));
+    let surface = Surface::from_data(&mut data, FONT_TEX_WIDTH as u32, FONT_TEX_HEIGHT as u32,
+        32, PixelFormatEnum::ARGB8888)?;
     let texture = try!(renderer.create_texture_from_surface(&surface));
 
     Ok(Font::new(texture, 8, 8, CHAT_SCALE as i32))
 }
 
-fn load_border_renderer(renderer: &Renderer, mem: &Memory) -> SdlResult<BorderRenderer> {
+fn load_border_renderer(renderer: &Renderer, mem: &Memory) -> Result<BorderRenderer, Box<Error>> {
     const BORDER_TEX_WIDTH: usize = 8 * 7;
     const BORDER_TEX_HEIGHT: usize = 8;
 

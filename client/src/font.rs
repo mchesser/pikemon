@@ -1,7 +1,8 @@
-use sdl2::rect::Rect;
-use sdl2::render::{Texture, RenderDrawer};
+use sdl2::render::{Texture, Renderer};
 
 use interface::text::special;
+
+use common::Rect;
 
 pub struct Font {
     texture: Texture,
@@ -28,18 +29,17 @@ impl Font {
         self.char_width * self.scale
     }
 
-    pub fn draw_char(&self, drawer: &mut RenderDrawer, val: i32, x: i32, y: i32) {
+    pub fn draw_char(&self, renderer: &mut Renderer, val: i32, x: i32, y: i32) {
         let offset = val * self.char_width;
         let source_rect = Rect::new(offset, 0, self.char_width, self.char_height);
         let dest_rect = Rect::new(x, y, self.char_width(), self.line_height());
 
-        drawer.copy_ex(&self.texture, Some(source_rect), Some(dest_rect), 0.0, None,
-            (false, false))
+        renderer.copy(&self.texture, Some(source_rect.to_sdl()), Some(dest_rect.to_sdl()));
     }
 }
 
 /// Draw text, returning the total height of the text drawn
-pub fn draw_text(drawer: &mut RenderDrawer, font: &Font, text: &[u8], target: &Rect) -> i32 {
+pub fn draw_text(renderer: &mut Renderer, font: &Font, text: &[u8], target: &Rect) -> i32 {
     let (mut x, mut y) = (target.x, target.y);
     for &char_ in text {
         match char_ {
@@ -61,17 +61,17 @@ pub fn draw_text(drawer: &mut RenderDrawer, font: &Font, text: &[u8], target: &R
 
             normal_char => {
                 // The index of normal characters in the font is their value - 0x80
-                font.draw_char(drawer, (normal_char - 0x80) as i32, x, y);
+                font.draw_char(renderer, (normal_char - 0x80) as i32, x, y);
                 x += font.char_width();
             },
         }
 
         // Check for wrapping
-        if x - target.x + font.char_width() > target.w {
+        if x - target.x + font.char_width() > target.width {
             x = target.x;
             y += font.line_height();
         }
-        if y - target.y + font.line_height() > target.h {
+        if y - target.y + font.line_height() > target.height {
             break;
         }
     }

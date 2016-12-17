@@ -1,4 +1,4 @@
-#![feature(std_misc)]
+#![feature(mpsc_select)]
 
 extern crate rustc_serialize;
 extern crate network_common;

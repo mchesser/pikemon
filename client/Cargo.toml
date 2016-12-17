@@ -3,9 +3,6 @@ name = "pikemon_client"
 version = "0.0.0"
 authors = ["Michael Chesser"]
 
-[[bin]]
-name = "pikemon_client"
-
 [dependencies.network_common]
 path = "../network_common"
 
@@ -15,9 +12,7 @@ path = "../interface"
 [dependencies.gb_emu]
 git = "https://github.com/quvarxa/gb_emu.git"
 
-[dependencies.sdl2]
-git = "https://github.com/AngryLawyer/rust-sdl2"
-
 [dependencies]
-rustc-serialize = "*"
-clock_ticks = "*"
+rustc-serialize = "0.3"
+clock_ticks = "0.1"
+sdl2 = "0.27"

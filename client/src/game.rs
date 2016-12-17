@@ -1,11 +1,8 @@
 use std::mem;
 use std::cell::RefCell;
-use std::slice::bytes::copy_memory;
 
-use sdl2::rect::Rect;
-use sdl2::keycode::KeyCode;
-use sdl2::render::{RenderDrawer, Texture};
-use sdl2::keyboard as sdl_keyboard;
+use sdl2::render::{Renderer, Texture};
+use sdl2::keyboard::Keycode;
 
 use gb_emu::cpu::Cpu;
 use gb_emu::mmu::Memory;
@@ -15,9 +12,10 @@ use gb_emu::joypad;
 
 use interface::data::{PlayerData, SpriteData};
 use interface::values::Direction;
-
-use client;
 use interface::{self, extract, hacks, InterfaceData, InterfaceState};
+
+use common::Rect;
+use client;
 use chat::ChatBox;
 use menu::ItemBox;
 use font::Font;
@@ -49,6 +47,7 @@ impl<'a> Game<'a> {
         border_renderer: &'a BorderRenderer) -> Game<'a>
     {
         let player_data = PlayerData::new(&emulator.mem);
+
         let chat_box_rect = Rect::new(client::EMU_WIDTH as i32, 0, client::CHAT_WIDTH as i32,
             client::EMU_HEIGHT as i32);
         let menu_rect = Rect::new(((client::EMU_WIDTH - client::MENU_WIDTH) / 2) as i32,
@@ -105,7 +104,7 @@ impl<'a> Game<'a> {
                 }
 
                 let _ = emu_texture.with_lock(None, |mut pixels, _| {
-                    copy_memory(&mem.gpu.framebuffer, &mut pixels);
+                    pixels.copy_from_slice(&mem.gpu.framebuffer);
                 });
             };
 
@@ -114,62 +113,62 @@ impl<'a> Game<'a> {
 
     }
 
-    pub fn render(&self, drawer: &mut RenderDrawer) {
-        drawer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH as i32,
-            client::EMU_HEIGHT as i32)));
-        self.chat_box.draw(drawer);
+    pub fn render(&self, renderer: &mut Renderer) {
+        renderer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH as i32,
+            client::EMU_HEIGHT as i32).to_sdl()));
+        self.chat_box.draw(renderer);
 
         if self.game_state == GameState::Menu {
-            self.menu.draw(drawer);
+            self.menu.draw(renderer);
         }
     }
 
-    pub fn key_down(&mut self, keycode: KeyCode) {
+    pub fn key_down(&mut self, keycode: Keycode) {
         match self.game_state {
             GameState::Emulator => {
                 self.write_to_joypad(keycode, joypad::State::Pressed);
-                if keycode == KeyCode::Space { self.fast_mode = true; }
+                if keycode == Keycode::Space { self.fast_mode = true; }
             },
 
             GameState::ChatBox => match keycode {
                 // TODO: Possible handle other editing
-                KeyCode::Backspace => { self.chat_box.message_buffer.pop(); },
+                Keycode::Backspace => { self.chat_box.message_buffer.pop(); },
                 _ => {},
             },
 
             GameState::Menu => match keycode {
-                KeyCode::Up => self.menu.move_up(),
-                KeyCode::Down => self.menu.move_down(),
+                Keycode::Up => self.menu.move_up(),
+                Keycode::Down => self.menu.move_down(),
                 _ => {},
             },
         }
     }
 
-    pub fn key_up(&mut self, keycode: KeyCode) {
+    pub fn key_up(&mut self, keycode: Keycode) {
         match self.game_state {
             GameState::Emulator => {
                 self.write_to_joypad(keycode, joypad::State::Released);
-                if keycode == KeyCode::Space { self.fast_mode = false; }
-                else if keycode == KeyCode::T {
+                if keycode == Keycode::Space { self.fast_mode = false; }
+                else if keycode == Keycode::T {
                     self.game_state = GameState::ChatBox;
-                    sdl_keyboard::start_text_input();
+                    // sdl_keyboard::start_text_input();
                 }
-                else if keycode == KeyCode::Escape {
+                else if keycode == Keycode::Escape {
                     self.game_state = GameState::Menu;
                 }
             },
 
             GameState::ChatBox => {
                 match keycode {
-                    KeyCode::Return => {
+                    Keycode::Return => {
                         self.chat_box.message_ready = true;
                         self.game_state = GameState::Emulator;
-                        sdl_keyboard::stop_text_input();
+                        // sdl_keyboard::stop_text_input();
                     },
 
-                    KeyCode::Escape => {
+                    Keycode::Escape => {
                         self.game_state = GameState::Emulator;
-                        sdl_keyboard::stop_text_input();
+                        // sdl_keyboard::stop_text_input();
                     },
 
                     _ => {},
@@ -178,7 +177,7 @@ impl<'a> Game<'a> {
 
             GameState::Menu => {
                 match keycode {
-                    KeyCode::Escape => {
+                    Keycode::Escape => {
                         self.game_state = GameState::Emulator;
                     },
                     _ => {},
@@ -193,19 +192,19 @@ impl<'a> Game<'a> {
         }
     }
 
-    fn write_to_joypad(&mut self, keycode: KeyCode, state: joypad::State) {
+    fn write_to_joypad(&mut self, keycode: Keycode, state: joypad::State) {
         let joypad = &mut self.emulator.mem.joypad;
         // TODO: Add custom key bindings
         match keycode {
-            KeyCode::Up => joypad.up = state,
-            KeyCode::Down => joypad.down = state,
-            KeyCode::Left => joypad.left = state,
-            KeyCode::Right => joypad.right = state,
+            Keycode::Up => joypad.up = state,
+            Keycode::Down => joypad.down = state,
+            Keycode::Left => joypad.left = state,
+            Keycode::Right => joypad.right = state,
 
-            KeyCode::Z => joypad.a = state,
-            KeyCode::X => joypad.b = state,
-            KeyCode::Return => joypad.start = state,
-            KeyCode::RShift => joypad.select = state,
+            Keycode::Z => joypad.a = state,
+            Keycode::X => joypad.b = state,
+            Keycode::Return => joypad.start = state,
+            Keycode::RShift => joypad.select = state,
 
             _ => {},
         }

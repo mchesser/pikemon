@@ -1,4 +1,3 @@
-#![feature(str_char, core)]
 //! Crate for interfacing with the emulator
 extern crate gb_emu;
 extern crate rustc_serialize;
@@ -154,14 +153,14 @@ pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &data::S
     // Render the sprite to the framebuffer
     // Note: Much of this code is similar to gb_emu::graphics::Gpu::render_sprite_scanline, the main
     // differences is that it draws the entire sprite at once.
-    for dy in (0..SPRITE_HEIGHT as isize) {
+    for dy in 0..SPRITE_HEIGHT as isize {
         if sprite_data.y + dy < 0 || sprite_data.y + dy >= graphics::HEIGHT as isize {
             continue;
         }
         let mut current_pos = (sprite_data.y + dy) * graphics::WIDTH as isize + sprite_data.x;
         let tile_y = if flags & 0x40 == 0 { dy as usize } else { SPRITE_HEIGHT - dy as usize - 1 };
 
-        for dx in (0..SPRITE_WIDTH as isize) {
+        for dx in 0..SPRITE_WIDTH as isize {
             // Check if this pixel is on the screen
             if sprite_data.x + dx < 0 || sprite_data.x + dx >= graphics::WIDTH as isize {
                 current_pos += 1;
