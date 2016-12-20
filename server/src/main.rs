@@ -26,7 +26,7 @@ struct Client {
 }
 
 fn run_server(bind_addr: &str) -> NetworkResult<()> {
-    let listener = try!(TcpListener::bind(bind_addr));
+    let listener = TcpListener::bind(bind_addr)?;
 
     let (new_client_sender, new_client_receiver) = channel();
     let (packet_sender, packet_receiver) = channel();
@@ -39,7 +39,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
     loop {
         select! {
             player_packet = packet_receiver.recv() => {
-                let message = try!(player_packet);
+                let message = player_packet?;
                 match message {
                     NetworkEvent::FullUpdate(sender_id, _) |
                     NetworkEvent::MovementUpdate(sender_id, _) |
@@ -70,7 +70,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
 
             // Handle new clients
             packet = new_client_receiver.recv() => {
-                let (id, sender) = try!(packet);
+                let (id, sender) = packet?;
                 println!("New client connected, id: {}", id);
                 clients.insert(id, sender);
 
@@ -85,7 +85,7 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
 
 fn send_to_client(client_stream: &mut TcpStream, message: &NetworkEvent) -> io::Result<usize> {
     let encoded_message = json::encode(&message).unwrap();
-    try!(client_stream.write(encoded_message.as_bytes()));
+    client_stream.write(encoded_message.as_bytes())?;
     client_stream.write("\n".as_bytes())
 }
 
@@ -95,7 +95,7 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, TcpStream)>,
     let mut next_id = 0;
 
     for stream in listener.incoming() {
-        let mut stream = try!(stream);
+        let mut stream = stream?;
         if let Err(e) = send_to_client(&mut stream, &NetworkEvent::PlayerJoin(next_id)) {
             println!("Failed to communicate with client: {}", e);
             continue;
@@ -103,14 +103,14 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, TcpStream)>,
 
         let client = Client {
             id: next_id,
-            client_stream: try!(stream.try_clone()),
+            client_stream: stream.try_clone()?,
             server_sender: server_sender.clone(),
         };
 
         thread::spawn(move|| {
             let _ = client_handler(client);
         });
-        try!(new_client_sender.send((next_id, stream)));
+        new_client_sender.send((next_id, stream))?;
 
         next_id += 1;
     }
@@ -125,12 +125,12 @@ fn client_handler(client: Client) -> NetworkResult<()> {
         match client_stream.read_line(&mut data) {
             Ok(_) => {
                 let packet = json::decode(&data).unwrap();
-                try!(client.server_sender.send(packet));
+                client.server_sender.send(packet)?;
             },
 
             Err(_) => {
                 let packet = NetworkEvent::PlayerQuit(client.id);
-                try!(client.server_sender.send(packet));
+                client.server_sender.send(packet)?;
                 return Ok(());
             },
         }

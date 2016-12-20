@@ -63,7 +63,6 @@ fn main() {
 
     let client_manager = ClientManager::new(id, local_update_sender, global_update_receiver);
 
-    println!("All setup!, now we are ready to run the game");
     if let Err(e) = client::run(client_manager, emulator) {
         println!("Pikemon encountered an error and was forced to close. ({})", e);
     }

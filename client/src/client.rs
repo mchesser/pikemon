@@ -21,7 +21,7 @@ use interface::{self, extract};
 use font::Font;
 use border::BorderRenderer;
 
-const EMU_SCALE: u32 = 2;
+const EMU_SCALE: u32 = 3;
 pub const EMU_WIDTH: u32 = graphics::WIDTH as u32 * EMU_SCALE;
 pub const EMU_HEIGHT: u32 = graphics::HEIGHT as u32 * EMU_SCALE;
 
@@ -79,13 +79,18 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> Result
         frame_time += current_time - prev_time;
         prev_time = current_time;
 
-        const TARGET_TIME_STEP: u64 = 16666667;
-        while frame_time >= TARGET_TIME_STEP {
-            frame_time -= TARGET_TIME_STEP;
+        if !game.fast_mode {
+            const TARGET_TIME_STEP: u64 = 16666667;
+            while frame_time >= TARGET_TIME_STEP {
+                frame_time -= TARGET_TIME_STEP;
+                game.update();
+            }
+            thread::sleep(Duration::new(0, (TARGET_TIME_STEP - frame_time) as u32));
+        }
+        else {
             game.update();
         }
 
-        thread::sleep(Duration::new(0, (TARGET_TIME_STEP - frame_time) as u32));
     }
     Ok(())
 }
@@ -105,7 +110,7 @@ fn load_font(renderer: &Renderer, mem: &Memory) -> Result<Font, Box<Error>> {
     // Build a texture from the extracted data
     let surface = Surface::from_data(&mut data, FONT_TEX_WIDTH as u32, FONT_TEX_HEIGHT as u32,
         32, PixelFormatEnum::ARGB8888)?;
-    let texture = try!(renderer.create_texture_from_surface(&surface));
+    let texture = renderer.create_texture_from_surface(&surface)?;
 
     Ok(Font::new(texture, 8, 8, CHAT_SCALE as i32))
 }
@@ -120,9 +125,9 @@ fn load_border_renderer(renderer: &Renderer, mem: &Memory) -> Result<BorderRende
         extract::TextureFormat::Bpp2, graphics::GB_COLOR_TABLE);
 
     // Build a texture from the extracted data
-    let surface = try!(Surface::from_data(&mut data, BORDER_TEX_WIDTH as u32, BORDER_TEX_HEIGHT as u32,
-        32, PixelFormatEnum::ARGB8888));
-    let texture = try!(renderer.create_texture_from_surface(&surface));
+    let surface = Surface::from_data(&mut data, BORDER_TEX_WIDTH as u32, BORDER_TEX_HEIGHT as u32,
+        32, PixelFormatEnum::ARGB8888)?;
+    let texture = renderer.create_texture_from_surface(&surface)?;
 
     Ok(BorderRenderer::new(texture, 8, CHAT_SCALE as i32))
 }
