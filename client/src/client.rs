@@ -1,25 +1,16 @@
-extern crate clock_ticks;
+use std::{error::Error, time::Instant};
 
-use std::error::Error;
-use std::thread;
-use std::time::Duration;
+use gb_emu::{emulator::Emulator, graphics, mmu::Memory};
 
-use sdl2;
-use sdl2::event::Event;
-use sdl2::surface::Surface;
-use sdl2::render::{Renderer, TextureAccess};
-use sdl2::pixels::{PixelFormatEnum, Color};
-
-use gb_emu::emulator::Emulator;
-use gb_emu::graphics;
-use gb_emu::mmu::Memory;
-
-use game::Game;
-use net::ClientManager;
 use interface::{self, extract};
+use macroquad::{
+    miniquad::EventHandler,
+    prelude::utils,
+    texture::{FilterMode, Texture2D},
+    window::{next_frame, request_new_screen_size},
+};
 
-use font::Font;
-use border::BorderRenderer;
+use crate::{border::BorderRenderer, common::Renderer, font::Font, game::Game, net::ClientManager};
 
 const EMU_SCALE: u32 = 3;
 pub const EMU_WIDTH: u32 = graphics::WIDTH as u32 * EMU_SCALE;
@@ -31,52 +22,72 @@ pub const MENU_HEIGHT: u32 = EMU_HEIGHT / 2;
 pub const CHAT_WIDTH: u32 = 208;
 pub const CHAT_SCALE: u32 = 1;
 
-pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> Result<(), Box<Error>> {
-    const WHITE: Color = Color::RGB(0xFF, 0xFF, 0xFF);
+impl<'a> EventHandler for Game<'a> {
+    fn update(&mut self, _ctx: &mut macroquad::miniquad::Context) {}
+    fn draw(&mut self, _ctx: &mut macroquad::miniquad::Context) {}
 
-    let sdl_context = sdl2::init()?;
-    let video_subsystem = sdl_context.video()?;
+    fn char_event(
+        &mut self,
+        _ctx: &mut macroquad::miniquad::Context,
+        character: char,
+        _keymods: macroquad::miniquad::KeyMods,
+        _repeat: bool,
+    ) {
+        self.text_input(character.to_string())
+    }
 
-    let window = video_subsystem.window("Pikemon", EMU_WIDTH, EMU_HEIGHT).position_centered()
-        .opengl().build()?;
-    let mut renderer = window.renderer().accelerated().build()?;
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut macroquad::miniquad::Context,
+        keycode: macroquad::prelude::KeyCode,
+        _keymods: macroquad::miniquad::KeyMods,
+        _repeat: bool,
+    ) {
+        self.key_down(keycode);
+    }
 
-    let font_data = load_font(&renderer, &emulator.mem)?;
-    let border_renderer = load_border_renderer(&renderer, &emulator.mem)?;
+    fn key_up_event(
+        &mut self,
+        _ctx: &mut macroquad::miniquad::Context,
+        keycode: macroquad::prelude::KeyCode,
+        _keymods: macroquad::miniquad::KeyMods,
+    ) {
+        self.key_up(keycode)
+    }
 
-    let emu_texture = renderer.create_texture_streaming(PixelFormatEnum::ARGB8888,
-        graphics::WIDTH as u32, graphics::HEIGHT as u32)?;
+    fn quit_requested_event(&mut self, _ctx: &mut macroquad::miniquad::Context) {
+        eprintln!("exit requested");
+        self.exit_requested = true;
+    }
+}
 
-    let mut game = Game::new(emulator, emu_texture, &font_data, &border_renderer);
+pub async fn run(
+    mut client_manager: ClientManager,
+    emulator: Box<Emulator>,
+) -> Result<(), Box<dyn Error>> {
+    request_new_screen_size(EMU_WIDTH as f32, EMU_HEIGHT as f32);
 
-    let mut prev_time = clock_ticks::precise_time_ns();
+    let mut renderer = Renderer;
+    let font_data = load_font(&renderer, &emulator.mem);
+    let border_renderer = load_border_renderer(&renderer, &emulator.mem);
+
+    let mut game = Game::new(emulator, &font_data, &border_renderer);
+
+    let mut prev_time = Instant::now();
     let mut frame_time = 0;
 
-    let mut events = sdl_context.event_pump()?;
+    let events_subscriber = utils::register_input_subscriber();
+    while !game.exit_requested {
+        utils::repeat_all_miniquad_input(&mut game, events_subscriber);
 
-    'main: loop {
-        for event in events.poll_iter() {
-            match event {
-                Event::Quit{..} => break 'main,
-                Event::KeyDown{ keycode: Some(keycode), .. } => game.key_down(keycode),
-                Event::KeyUp{ keycode: Some(keycode), .. } => game.key_up(keycode),
-                Event::TextInput{ text, .. } => game.text_input(text),
-
-                _ => {},
-            }
-        }
-
-        renderer.set_draw_color(WHITE);
-        renderer.clear();
         game.render(&mut renderer);
-        renderer.present();
 
         client_manager.update_player(&game.player_data);
         client_manager.send_update(&mut game).unwrap();
         client_manager.recv_update(&mut game).unwrap();
 
-        let current_time = clock_ticks::precise_time_ns();
-        frame_time += current_time - prev_time;
+        let current_time = Instant::now();
+        frame_time += (current_time - prev_time).as_nanos() as u64;
         prev_time = current_time;
 
         if !game.fast_mode {
@@ -85,17 +96,21 @@ pub fn run(mut client_manager: ClientManager, emulator: Box<Emulator>) -> Result
                 frame_time -= TARGET_TIME_STEP;
                 game.update();
             }
-            thread::sleep(Duration::new(0, (TARGET_TIME_STEP - frame_time) as u32));
+            // thread::sleep(Duration::new(0, (TARGET_TIME_STEP - frame_time) as u32));
         }
         else {
-            game.update();
+            for _ in 0..10 {
+                game.update();
+            }
         }
 
+        next_frame().await
     }
+
     Ok(())
 }
 
-fn load_font(renderer: &Renderer, mem: &Memory) -> Result<Font, Box<Error>> {
+fn load_font(_renderer: &Renderer, mem: &Memory) -> Font {
     const BLACK: [u8; 4] = [0, 0, 0, 255];
     const WHITE: [u8; 4] = [255, 255, 255, 255];
 
@@ -103,31 +118,39 @@ fn load_font(renderer: &Renderer, mem: &Memory) -> Result<Font, Box<Error>> {
     const FONT_TEX_HEIGHT: usize = 8;
 
     // Extract the font data from the game
-    let mut data = extract::extract_texture(mem, interface::offsets::FONT_BANK,
-        interface::offsets::FONT_ADDR, FONT_TEX_WIDTH, FONT_TEX_HEIGHT,
-        extract::TextureFormat::Bpp1, &[BLACK, WHITE]);
+    let data = extract::extract_texture(
+        mem,
+        interface::offsets::FONT_BANK,
+        interface::offsets::FONT_ADDR,
+        FONT_TEX_WIDTH,
+        FONT_TEX_HEIGHT,
+        extract::TextureFormat::Bpp1,
+        &[BLACK, WHITE],
+    );
 
     // Build a texture from the extracted data
-    let surface = Surface::from_data(&mut data, FONT_TEX_WIDTH as u32, FONT_TEX_HEIGHT as u32,
-        32, PixelFormatEnum::ARGB8888)?;
-    let texture = renderer.create_texture_from_surface(&surface)?;
-
-    Ok(Font::new(texture, 8, 8, CHAT_SCALE as i32))
+    let texture = Texture2D::from_rgba8(FONT_TEX_WIDTH as u16, FONT_TEX_HEIGHT as u16, &data);
+    texture.set_filter(FilterMode::Nearest);
+    Font::new(texture, 8, 8, CHAT_SCALE as i32)
 }
 
-fn load_border_renderer(renderer: &Renderer, mem: &Memory) -> Result<BorderRenderer, Box<Error>> {
+fn load_border_renderer(_renderer: &Renderer, mem: &Memory) -> BorderRenderer {
     const BORDER_TEX_WIDTH: usize = 8 * 7;
     const BORDER_TEX_HEIGHT: usize = 8;
 
     // Extract the border data from the game
-    let mut data = extract::extract_texture(mem, interface::offsets::FONT_BANK,
-        interface::offsets::BORDER_ADDR, BORDER_TEX_WIDTH, BORDER_TEX_HEIGHT,
-        extract::TextureFormat::Bpp2, graphics::GB_COLOR_TABLE);
+    let data = extract::extract_texture(
+        mem,
+        interface::offsets::FONT_BANK,
+        interface::offsets::BORDER_ADDR,
+        BORDER_TEX_WIDTH,
+        BORDER_TEX_HEIGHT,
+        extract::TextureFormat::Bpp2,
+        graphics::GB_COLOR_TABLE,
+    );
 
     // Build a texture from the extracted data
-    let surface = Surface::from_data(&mut data, BORDER_TEX_WIDTH as u32, BORDER_TEX_HEIGHT as u32,
-        32, PixelFormatEnum::ARGB8888)?;
-    let texture = renderer.create_texture_from_surface(&surface)?;
-
-    Ok(BorderRenderer::new(texture, 8, CHAT_SCALE as i32))
+    let texture = Texture2D::from_rgba8(BORDER_TEX_WIDTH as u16, BORDER_TEX_HEIGHT as u16, &data);
+    texture.set_filter(FilterMode::Nearest);
+    BorderRenderer::new(texture, 8, CHAT_SCALE as i32)
 }

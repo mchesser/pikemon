@@ -2,10 +2,8 @@
 name = "interface"
 version = "0.0.0"
 authors = ["Michael Chesser"]
-
-[dependencies.gb_emu]
-git = "https://github.com/quvarxa/gb_emu.git"
+edition = "2021"
 
 [dependencies]
-rustc-serialize = "*"
-num = "*"
+gb_emu = { git = "https://github.com/mchesser/gb_emu" }
+serde = { version = "1.0.145", features = ["derive"] }

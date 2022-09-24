@@ -1,11 +1,11 @@
 use gb_emu::mmu::Memory;
 
-use values::{moves, types, status, pokeid};
-use values::Direction;
+use crate::{
+    extract,
+    values::{moves, pokeid, status, types, Direction},
+};
 
-use extract;
-
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MovementData {
     pub map_id: u8,
     pub map_x: u8,
@@ -16,22 +16,16 @@ pub struct MovementData {
 
 impl MovementData {
     pub fn new() -> MovementData {
-        MovementData {
-            map_id: 0,
-            map_x: 0,
-            map_y: 0,
-            direction: Direction::Down,
-            walk_counter: 0,
-        }
+        MovementData { map_id: 0, map_x: 0, map_y: 0, direction: Direction::Down, walk_counter: 0 }
     }
 
     /// Returns the tile that the player is currently moving towards
     pub fn move_target(&self) -> (u8, u8) {
         if self.walk_counter != 0 {
             match self.direction {
-                Direction::Down  => (self.map_x, self.map_y + 1),
-                Direction::Up    => (self.map_x, self.map_y - 1),
-                Direction::Left  => (self.map_x - 1, self.map_y),
+                Direction::Down => (self.map_x, self.map_y + 1),
+                Direction::Up => (self.map_x, self.map_y - 1),
+                Direction::Left => (self.map_x - 1, self.map_y),
                 Direction::Right => (self.map_x + 1, self.map_y),
             }
         }
@@ -50,7 +44,7 @@ pub struct SpriteData {
     pub flags: u8,
 }
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PlayerData {
     pub name: Vec<u8>,
     pub sprite: Vec<u8>,
@@ -69,8 +63,8 @@ impl PlayerData {
 
     /// Check if this player is occupying a particular tile
     pub fn check_collision(&self, x: u8, y: u8) -> bool {
-        (x, y) == (self.movement_data.map_x, self.movement_data.map_y) ||
-            (x, y) == self.movement_data.move_target()
+        (x, y) == (self.movement_data.map_x, self.movement_data.map_y)
+            || (x, y) == self.movement_data.move_target()
     }
 
     /// Check if one player is visible to another player
@@ -79,7 +73,7 @@ impl PlayerData {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct Party {
     pub num_pokemon: u8,
     pub pokemon: (PokemonData, PokemonData, PokemonData, PokemonData, PokemonData, PokemonData),
@@ -88,7 +82,7 @@ pub struct Party {
 pub const BATTLE_DATA_SIZE: usize = 0x194;
 pub type BattleData = Vec<u8>;
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[allow(missing_copy_implementations)]
 pub struct PokemonData {
     pub species: u8,

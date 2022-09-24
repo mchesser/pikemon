@@ -1,22 +1,14 @@
 //! Crate for interfacing with the emulator
-extern crate gb_emu;
-extern crate rustc_serialize;
-extern crate num;
+use std::collections::{HashMap, VecDeque};
 
-use std::collections::VecDeque;
-use std::collections::HashMap;
+use gb_emu::{graphics, mmu::Memory};
 
-use gb_emu::mmu::Memory;
-use gb_emu::graphics;
-
-use data::{Party, BattleData};
-
-pub mod offsets;
-pub mod values;
 pub mod data;
 pub mod extract;
-pub mod text;
 pub mod hacks;
+pub mod offsets;
+pub mod text;
+pub mod values;
 
 #[derive(PartialEq)]
 enum DataState {
@@ -127,18 +119,20 @@ pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &data::S
     const SPRITE_WIDTH: usize = 16;
 
     // Check if the sprite actually appears on the screen
-    if sprite_data.y >= graphics::HEIGHT as isize || sprite_data.y + SPRITE_HEIGHT as isize <= 0 ||
-        sprite_data.x >= graphics::WIDTH as isize || sprite_data.x + SPRITE_WIDTH as isize <= 0
+    if sprite_data.y >= graphics::HEIGHT as isize
+        || sprite_data.y + SPRITE_HEIGHT as isize <= 0
+        || sprite_data.x >= graphics::WIDTH as isize
+        || sprite_data.x + SPRITE_WIDTH as isize <= 0
     {
         return false;
     }
 
     // Check if the sprite is hidden under a menu or a tile
     let tile_addr = get_tile_id_addr(sprite_data.x as u8, sprite_data.y as u8);
-    if mem.lb(tile_addr) > values::MAX_MAP_TILE ||
-        mem.lb(tile_addr + 1) > values::MAX_MAP_TILE ||
-        mem.lb(tile_addr - 20) > values::MAX_MAP_TILE ||
-        mem.lb(tile_addr - 19) > values::MAX_MAP_TILE
+    if mem.lb(tile_addr) > values::MAX_MAP_TILE
+        || mem.lb(tile_addr + 1) > values::MAX_MAP_TILE
+        || mem.lb(tile_addr - 20) > values::MAX_MAP_TILE
+        || mem.lb(tile_addr - 19) > values::MAX_MAP_TILE
     {
         return false;
     }
@@ -168,14 +162,17 @@ pub fn render_sprite(mem: &mut Memory, spritesheet: &[u8], sprite_data: &data::S
             }
 
             let px_priority = gpu.pixel_priorities[current_pos as usize];
-            let tile_x = if flags & 0x20 == 0 { SPRITE_WIDTH - dx as usize - 1 }
-                         else { dx as usize };
+            let tile_x =
+                if flags & 0x20 == 0 { SPRITE_WIDTH - dx as usize - 1 } else { dx as usize };
             let color_id = sprite[tile_y * SPRITE_WIDTH + tile_x];
 
             if color_id != 0 && (flags & 0x80 == 0 || px_priority == 0) && px_priority <= 3 {
                 let color = graphics::palette_lookup(palette, color_id as usize);
-                graphics::write_pixel(&mut gpu.framebuffer,
-                    current_pos as usize * graphics::BYTES_PER_PIXEL, color);
+                graphics::write_pixel(
+                    &mut gpu.framebuffer,
+                    current_pos as usize * graphics::BYTES_PER_PIXEL,
+                    color,
+                );
             }
 
             current_pos += 1;

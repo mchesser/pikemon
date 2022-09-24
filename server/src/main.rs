@@ -1,45 +1,37 @@
-#![feature(mpsc_select)]
-
-extern crate rustc_serialize;
-extern crate network_common;
-extern crate interface;
-
-use rustc_serialize::json;
-
-use std::thread;
-use std::collections::HashMap;
-
-use std::io::prelude::*;
-use std::io::{self, BufReader};
-
-use std::net::{TcpListener, TcpStream};
-use std::sync::mpsc::{channel, Sender};
+use std::{
+    collections::HashMap,
+    io::{self, BufRead, BufReader, Write},
+    net::{TcpListener, TcpStream},
+    thread,
+};
 
 use interface::PlayerId;
-use network_common::NetworkEvent;
-use network_common::error::NetworkResult;
+use network_common::{
+    error::{NetworkError, NetworkResult},
+    NetworkEvent,
+};
 
 struct Client {
     id: PlayerId,
     client_stream: TcpStream,
-    server_sender: Sender<NetworkEvent>,
+    server_sender: crossbeam_channel::Sender<NetworkEvent>,
 }
 
 fn run_server(bind_addr: &str) -> NetworkResult<()> {
     let listener = TcpListener::bind(bind_addr)?;
 
-    let (new_client_sender, new_client_receiver) = channel();
-    let (packet_sender, packet_receiver) = channel();
+    let (new_client_sender, new_client_receiver) = crossbeam_channel::unbounded();
+    let (packet_sender, packet_receiver) = crossbeam_channel::unbounded();
 
-    thread::spawn(move|| {
+    thread::spawn(move || {
         let _ = acceptor(listener, new_client_sender, packet_sender);
     });
 
     let mut clients = HashMap::new();
     loop {
-        select! {
-            player_packet = packet_receiver.recv() => {
-                let message = player_packet?;
+        crossbeam_channel::select! {
+            recv(&packet_receiver) -> player_packet => {
+                let message = player_packet.map_err(|_| NetworkError::RecvError)?;
                 match message {
                     NetworkEvent::FullUpdate(sender_id, _) |
                     NetworkEvent::MovementUpdate(sender_id, _) |
@@ -69,8 +61,8 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
             },
 
             // Handle new clients
-            packet = new_client_receiver.recv() => {
-                let (id, sender) = packet?;
+            recv(new_client_receiver) -> packet => {
+                let (id, sender) = packet.map_err(|_| NetworkError::RecvError)?;
                 println!("New client connected, id: {}", id);
                 clients.insert(id, sender);
 
@@ -78,20 +70,23 @@ fn run_server(bind_addr: &str) -> NetworkResult<()> {
                 for (_, client_stream) in &mut clients {
                     send_to_client(client_stream, &NetworkEvent::UpdateRequest).unwrap();
                 }
-            }
+
+            },
         }
     }
 }
 
 fn send_to_client(client_stream: &mut TcpStream, message: &NetworkEvent) -> io::Result<usize> {
-    let encoded_message = json::encode(&message).unwrap();
-    client_stream.write(encoded_message.as_bytes())?;
+    let encoded_message = serde_json::to_vec(&message).unwrap();
+    client_stream.write(&encoded_message)?;
     client_stream.write("\n".as_bytes())
 }
 
-fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, TcpStream)>,
-    server_sender: Sender<NetworkEvent>) -> NetworkResult<()>
-{
+fn acceptor(
+    listener: TcpListener,
+    new_client_sender: crossbeam_channel::Sender<(u32, TcpStream)>,
+    server_sender: crossbeam_channel::Sender<NetworkEvent>,
+) -> NetworkResult<()> {
     let mut next_id = 0;
 
     for stream in listener.incoming() {
@@ -107,10 +102,10 @@ fn acceptor(listener: TcpListener, new_client_sender: Sender<(u32, TcpStream)>,
             server_sender: server_sender.clone(),
         };
 
-        thread::spawn(move|| {
+        thread::spawn(move || {
             let _ = client_handler(client);
         });
-        new_client_sender.send((next_id, stream))?;
+        new_client_sender.send((next_id, stream)).map_err(|_| NetworkError::SendError)?;
 
         next_id += 1;
     }
@@ -124,15 +119,15 @@ fn client_handler(client: Client) -> NetworkResult<()> {
     loop {
         match client_stream.read_line(&mut data) {
             Ok(_) => {
-                let packet = json::decode(&data).unwrap();
-                client.server_sender.send(packet)?;
-            },
+                let packet = serde_json::from_str(&data).unwrap();
+                client.server_sender.send(packet).map_err(|_| NetworkError::SendError)?;
+            }
 
             Err(_) => {
                 let packet = NetworkEvent::PlayerQuit(client.id);
-                client.server_sender.send(packet)?;
+                client.server_sender.send(packet).map_err(|_| NetworkError::SendError)?;
                 return Ok(());
-            },
+            }
         }
         data.clear();
     }

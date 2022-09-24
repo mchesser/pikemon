@@ -2,12 +2,10 @@
 name = "pikemon_server"
 version = "0.0.1"
 authors = ["Michael Chesser"]
-
-[dependencies.network_common]
-path = "../network_common"
-
-[dependencies.interface]
-path = "../interface"
+edition = "2021"
 
 [dependencies]
-rustc-serialize = "0.3"
+network_common = { path = "../network_common" }
+interface = { path = "../interface" }
+crossbeam-channel = "0.5.6"
+serde_json = "1.0.85"

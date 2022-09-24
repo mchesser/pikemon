@@ -1,7 +1,8 @@
-use std::io;
-use std::io::prelude::*;
-use std::path::Path;
-use std::fs::{self, File};
+use std::{
+    fs::{self, File},
+    io::{self, prelude::*},
+    path::Path,
+};
 
 use gb_emu::cart::SaveFile;
 
@@ -28,18 +29,22 @@ impl<'a> SaveFile for LocalSaveWrapper<'a> {
         // At this stage the new save file has been successfully written, so we can safely remove
         // the old file if it exists.
         match fs::remove_file(&self.path) {
-            Ok(_) => {},
-            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {},
+            Ok(_) => {}
+            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
             Err(e) => {
-                println!("Error removing old save file ({}), current save has been written to: {}",
-                    e, tmp_path.display());
+                println!(
+                    "Error removing old save file ({}), current save has been written to: {}",
+                    e,
+                    tmp_path.display()
+                );
                 return;
-            },
+            }
         }
 
         // Now rename the temporary file to the correct name
         if let Err(e) = fs::rename(&tmp_path, &self.path) {
             println!("Error renaming temporary save file: {}", e);
         }
+        eprintln!("Saved state: {}", self.path.display());
     }
 }

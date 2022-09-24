@@ -1,25 +1,27 @@
-use std::mem;
-use std::cell::RefCell;
+use std::{cell::RefCell, mem};
 
-use sdl2::render::{Renderer, Texture};
-use sdl2::keyboard::Keycode;
+use gb_emu::{cpu::Cpu, emulator::Emulator, graphics, joypad, mmu::Memory};
 
-use gb_emu::cpu::Cpu;
-use gb_emu::mmu::Memory;
-use gb_emu::emulator::Emulator;
-use gb_emu::graphics;
-use gb_emu::joypad;
+use interface::{
+    self,
+    data::{PlayerData, SpriteData},
+    extract, hacks,
+    values::Direction,
+    InterfaceData, InterfaceState,
+};
+use macroquad::{
+    prelude::{KeyCode, WHITE},
+    texture::{render_target, FilterMode, Image, Texture2D},
+};
 
-use interface::data::{PlayerData, SpriteData};
-use interface::values::Direction;
-use interface::{self, extract, hacks, InterfaceData, InterfaceState};
-
-use common::Rect;
-use client;
-use chat::ChatBox;
-use menu::ItemBox;
-use font::Font;
-use border::BorderRenderer;
+use crate::{
+    border::BorderRenderer,
+    chat::ChatBox,
+    client,
+    common::{Rect, Renderer},
+    font::Font,
+    menu::ItemBox,
+};
 
 #[derive(PartialEq, Eq)]
 pub enum GameState {
@@ -30,7 +32,8 @@ pub enum GameState {
 
 pub struct Game<'a> {
     pub emulator: Box<Emulator>,
-    pub emu_texture: Texture,
+    pub screen: Image,
+    pub screen_texture: Texture2D,
     pub font: &'a Font,
     pub border_renderer: &'a BorderRenderer,
 
@@ -40,32 +43,52 @@ pub struct Game<'a> {
     pub menu: ItemBox<'a>,
     pub player_data: PlayerData,
     pub fast_mode: bool,
+    pub exit_requested: bool,
 }
 
 impl<'a> Game<'a> {
-    pub fn new(emulator: Box<Emulator>, emu_texture: Texture, font: &'a Font,
-        border_renderer: &'a BorderRenderer) -> Game<'a>
-    {
+    pub fn new(
+        emulator: Box<Emulator>,
+        font: &'a Font,
+        border_renderer: &'a BorderRenderer,
+    ) -> Game<'a> {
         let player_data = PlayerData::new(&emulator.mem);
 
-        let chat_box_rect = Rect::new(client::EMU_WIDTH as i32, 0, client::CHAT_WIDTH as i32,
-            client::EMU_HEIGHT as i32);
-        let menu_rect = Rect::new(((client::EMU_WIDTH - client::MENU_WIDTH) / 2) as i32,
-            ((client::EMU_HEIGHT - client::MENU_HEIGHT) / 2) as i32, client::MENU_WIDTH as i32,
-            client::MENU_HEIGHT as i32);
+        let chat_box_rect = Rect::new(
+            client::EMU_WIDTH as i32,
+            0,
+            client::CHAT_WIDTH as i32,
+            client::EMU_HEIGHT as i32,
+        );
+        let menu_rect = Rect::new(
+            ((client::EMU_WIDTH - client::MENU_WIDTH) / 2) as i32,
+            ((client::EMU_HEIGHT - client::MENU_HEIGHT) / 2) as i32,
+            client::MENU_WIDTH as i32,
+            client::MENU_HEIGHT as i32,
+        );
+
+        let screen_texture = render_target(graphics::WIDTH as u32, graphics::HEIGHT as u32).texture;
+        screen_texture.set_filter(FilterMode::Nearest);
+
         Game {
-            emulator: emulator,
-            emu_texture: emu_texture,
-            font: font,
-            border_renderer: border_renderer,
+            emulator,
+            screen: Image::gen_image_color(graphics::WIDTH as u16, graphics::HEIGHT as u16, WHITE),
+            screen_texture,
+            font,
+            border_renderer,
 
             game_state: GameState::Emulator,
             interface_data: RefCell::new(InterfaceData::new()),
             chat_box: ChatBox::new(font, border_renderer, chat_box_rect),
-            menu: ItemBox::new(vec!["CONNECT".to_string(), "SHOW PLAYERS".to_string(), "EXIT".to_string()],
-                font, border_renderer, menu_rect),
-            player_data: player_data,
+            menu: ItemBox::new(
+                vec!["CONNECT".to_string(), "SHOW PLAYERS".to_string(), "EXIT".to_string()],
+                font,
+                border_renderer,
+                menu_rect,
+            ),
+            player_data,
             fast_mode: false,
+            exit_requested: false,
         }
     }
 
@@ -75,7 +98,7 @@ impl<'a> Game<'a> {
             // checker. (Hopefully we won't need to do this in the future)
             let interface_data = &mut self.interface_data;
             let player_data = &mut self.player_data;
-            let emu_texture = &mut self.emu_texture;
+            let screen = &mut self.screen;
             let emulator = &mut self.emulator;
 
             // After each tick we run all the hacks on the game. Most of the hacks do not actually
@@ -103,19 +126,20 @@ impl<'a> Game<'a> {
                     draw_other_players(interface_data, player_data, mem);
                 }
 
-                let _ = emu_texture.with_lock(None, |mut pixels, _| {
-                    pixels.copy_from_slice(&mem.gpu.framebuffer);
-                });
+                screen.bytes.copy_from_slice(&mem.gpu.framebuffer);
+                self.screen_texture.update(&screen);
             };
 
             emulator.frame(on_tick, on_vblank);
         }
-
     }
 
     pub fn render(&self, renderer: &mut Renderer) {
-        renderer.copy(&self.emu_texture, None, Some(Rect::new(0, 0, client::EMU_WIDTH as i32,
-            client::EMU_HEIGHT as i32).to_sdl()));
+        renderer.copy(
+            self.screen_texture,
+            None,
+            Some(Rect::new(0, 0, client::EMU_WIDTH as i32, client::EMU_HEIGHT as i32)),
+        );
         self.chat_box.draw(renderer);
 
         if self.game_state == GameState::Menu {
@@ -123,65 +147,69 @@ impl<'a> Game<'a> {
         }
     }
 
-    pub fn key_down(&mut self, keycode: Keycode) {
+    pub fn key_down(&mut self, keycode: KeyCode) {
         match self.game_state {
             GameState::Emulator => {
                 self.write_to_joypad(keycode, joypad::State::Pressed);
-                if keycode == Keycode::Space { self.fast_mode = true; }
-            },
+                if keycode == KeyCode::Space {
+                    self.fast_mode = true;
+                }
+            }
 
             GameState::ChatBox => match keycode {
                 // TODO: Possible handle other editing
-                Keycode::Backspace => { self.chat_box.message_buffer.pop(); },
-                _ => {},
+                KeyCode::Backspace => {
+                    self.chat_box.message_buffer.pop();
+                }
+                _ => {}
             },
 
             GameState::Menu => match keycode {
-                Keycode::Up => self.menu.move_up(),
-                Keycode::Down => self.menu.move_down(),
-                _ => {},
+                KeyCode::Up => self.menu.move_up(),
+                KeyCode::Down => self.menu.move_down(),
+                _ => {}
             },
         }
     }
 
-    pub fn key_up(&mut self, keycode: Keycode) {
+    pub fn key_up(&mut self, keycode: KeyCode) {
         match self.game_state {
             GameState::Emulator => {
                 self.write_to_joypad(keycode, joypad::State::Released);
-                if keycode == Keycode::Space { self.fast_mode = false; }
-                else if keycode == Keycode::T {
+                if keycode == KeyCode::Space {
+                    self.fast_mode = false;
+                }
+                else if keycode == KeyCode::T {
                     self.game_state = GameState::ChatBox;
                     // sdl_keyboard::start_text_input();
                 }
-                else if keycode == Keycode::Escape {
+                else if keycode == KeyCode::Escape {
                     self.game_state = GameState::Menu;
                 }
-            },
+            }
 
             GameState::ChatBox => {
                 match keycode {
-                    Keycode::Return => {
+                    KeyCode::Enter => {
                         self.chat_box.message_ready = true;
                         self.game_state = GameState::Emulator;
                         // sdl_keyboard::stop_text_input();
-                    },
+                    }
 
-                    Keycode::Escape => {
+                    KeyCode::Escape => {
                         self.game_state = GameState::Emulator;
                         // sdl_keyboard::stop_text_input();
-                    },
+                    }
 
-                    _ => {},
+                    _ => {}
                 }
-            },
+            }
 
-            GameState::Menu => {
-                match keycode {
-                    Keycode::Escape => {
-                        self.game_state = GameState::Emulator;
-                    },
-                    _ => {},
+            GameState::Menu => match keycode {
+                KeyCode::Escape => {
+                    self.game_state = GameState::Emulator;
                 }
+                _ => {}
             },
         }
     }
@@ -192,21 +220,21 @@ impl<'a> Game<'a> {
         }
     }
 
-    fn write_to_joypad(&mut self, keycode: Keycode, state: joypad::State) {
+    fn write_to_joypad(&mut self, keycode: KeyCode, state: joypad::State) {
         let joypad = &mut self.emulator.mem.joypad;
         // TODO: Add custom key bindings
         match keycode {
-            Keycode::Up => joypad.up = state,
-            Keycode::Down => joypad.down = state,
-            Keycode::Left => joypad.left = state,
-            Keycode::Right => joypad.right = state,
+            KeyCode::Up => joypad.up = state,
+            KeyCode::Down => joypad.down = state,
+            KeyCode::Left => joypad.left = state,
+            KeyCode::Right => joypad.right = state,
 
-            Keycode::Z => joypad.a = state,
-            Keycode::X => joypad.b = state,
-            Keycode::Return => joypad.start = state,
-            Keycode::RShift => joypad.select = state,
+            KeyCode::Z => joypad.a = state,
+            KeyCode::X => joypad.b = state,
+            KeyCode::Enter => joypad.start = state,
+            KeyCode::RightShift => joypad.select = state,
 
-            _ => {},
+            _ => {}
         }
     }
 }
@@ -216,12 +244,8 @@ fn draw_other_players(interface_data: &InterfaceData, self_data: &PlayerData, me
         if player.is_visible_to(self_data) {
             let (x, y) = get_player_draw_position(self_data, player);
             let (index, flags) = get_sprite_index_and_flags(player);
-            let sprite_data = SpriteData {
-                x: x as isize,
-                y: y as isize,
-                index: index as usize,
-                flags: flags,
-            };
+            let sprite_data =
+                SpriteData { x: x as isize, y: y as isize, index: index as usize, flags };
             interface::render_sprite(mem, &player.sprite, &sprite_data);
         }
     }
@@ -251,9 +275,9 @@ fn get_player_position(player: &PlayerData) -> (i32, i32) {
     let offset = if ticks == 0 { 0 } else { (8 - ticks) * 2 } as i32;
 
     match player.movement_data.direction {
-        Direction::Down  => (x, y + offset),
-        Direction::Up    => (x, y - offset),
-        Direction::Left  => (x - offset, y),
+        Direction::Down => (x, y + offset),
+        Direction::Up => (x, y - offset),
+        Direction::Left => (x - offset, y),
         Direction::Right => (x + offset, y),
     }
 }
@@ -262,9 +286,9 @@ fn get_sprite_index_and_flags(player: &PlayerData) -> (isize, u8) {
     // Determine the base sprite index and flags that need to be set based on the direction the
     // player is currently facing.
     let (mut index, mut flags) = match player.movement_data.direction {
-        Direction::Down  => (0, 0x00),
-        Direction::Up    => (1, 0x00),
-        Direction::Left  => (2, 0x00),
+        Direction::Down => (0, 0x00),
+        Direction::Up => (1, 0x00),
+        Direction::Left => (2, 0x00),
         Direction::Right => (2, 0x20),
     };
 
